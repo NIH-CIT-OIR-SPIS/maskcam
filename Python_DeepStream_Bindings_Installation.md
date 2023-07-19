@@ -34,12 +34,13 @@ sudo update-ca-certificates
 
 Go back into su
 ```
+cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/3rdparty/gst-python/ && \
 sudo su
 ```
 
 
 ```
-cd 3rdparty/gst-python/
+cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/3rdparty/gst-python/
 ./autogen.sh
 make -j4
 exit
@@ -61,5 +62,4 @@ make -j4
 cd build
 python3 -m pip install ./pyds-1.1.6-py3-none*.whl
 ```
-
 
