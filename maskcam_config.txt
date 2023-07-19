@@ -1,6 +1,8 @@
 
 # NOTE: Some values might be overriden via ENV vars (check maskcam/config.py)
 
+# Noah: See https://github.com/NVIDIA-AI-IOT/deepstream_python_apps/blob/master/apps/deepstream-ssd-parser/custom_parser_guide.md on custom configuration parser for reading models.
+
 [face-processor]
 # Detections with score below this threshold will be discarded
 detection-threshold=0.1
@@ -46,6 +48,7 @@ inference-log-interval=300
 default-input=v4l2:///dev/video0
 
 # Output/streaming video resolution. 1024x576 keeps 4k aspect ratio of 1.777
+# Noah: Will need to be able to change these settings from MTQTT client 
 output-video-width=1024
 output-video-height=576
 
@@ -69,6 +72,7 @@ udp-port-streaming=5400
 udp-ports-filesave=5401,5402
 
 streaming-start-default=1
+# Noah: Might need to update streaming-port as there will be multiple Jetson's trying to connect to one port if this is left as is (I think)
 streaming-port=8554
 streaming-path=/maskcam
 streaming-clock-rate=90000
@@ -99,6 +103,7 @@ net-scale-factor=0.0039215697906911373
 model-color-format=0
 
 # YOLOv4
+# Noah: Will need our own custom model here in .trt format
 # model-engine-file=yolo/facemask_y4tiny_1024_608_fp16.trt
 # model-engine-file=yolo/maskcam_y4t_1184_672_fp16.trt
 # model-engine-file=yolo/maskcam_y4t_1120_640_fp16.trt
