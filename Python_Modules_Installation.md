@@ -14,7 +14,7 @@ Go to line where you see
 export PATH=/usr/local/cuda-11.4/bin:$PATH
 
 Then delete that line and replace with the the following
-export PATH=/usr/local/cuda-11.4/bin:/home/<username>/.local/bin:$PATH
+export PATH=/usr/local/cuda-11.4/bin:/home/[username]/.local/bin:$PATH
 
 where <username> is the name of the user (in this case orin54)
 
