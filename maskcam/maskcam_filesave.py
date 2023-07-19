@@ -22,9 +22,11 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+# Noah: Might end up using might not. If used will be modified.
+
 import os
 import gi
-import pyds
+import pyds # Noah: pyds are where many of the nvidia specific gstreamer elements and plugins are located (i.e. DeepStream software)
 import sys
 import time
 import signal

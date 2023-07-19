@@ -97,6 +97,11 @@ def sigint_handler(sig, frame):
 
 
 def start_process(name, target_function, config, **kwargs):
+    """
+    Noah:
+    Start a new process with a target function and a config dict.
+    returns the process and an event to interrupt it.
+    """
     e_interrupt_process = mp.Event()
     process = mp.Process(
         name=name,
@@ -114,6 +119,10 @@ def start_process(name, target_function, config, **kwargs):
 
 
 def terminate_process(name, process, e_interrupt_process, delete_info=False):
+    """
+    Noah:
+    Terminate a process and delete its info from the processes_info dict.
+    """
     print(f"Sending interrupt to {name} process")
     e_interrupt_process.set()
     print(f"Waiting for process [yellow]{name}[/yellow] to terminate...")
@@ -141,6 +150,11 @@ def new_command(command):
 
 
 def mqtt_init(config):
+    """
+    Noah:
+    Initialize MQTT client and subscribe to commands topic.
+
+    """
     if MQTT_BROKER_IP is None or MQTT_DEVICE_NAME is None:
         print(
             "[red]MQTT is DISABLED[/red]"
@@ -189,6 +203,11 @@ def mqtt_say_hello(mqtt_client):
 
 
 def mqtt_send_device_status(mqtt_client):
+    """
+    Noah:
+    send device status to MQTT broker
+    Includes the time of the Jetson device
+    """
     t_now = datetime.now()
     device_address = get_ip_address()
     is_valid_address = device_address != ADDRESS_UNKNOWN_LABEL
@@ -246,6 +265,12 @@ def mqtt_send_file_list(mqtt_client):
 
 
 def is_alert_condition(statistics, config):
+    """
+    Noah:
+    Check if alert condition is met.
+    Will need to be changed when using own model.
+    """
+
     # Thresholds config
     max_total_people = int(config["maskcam"]["alert-max-total-people"])
     min_visible_people = int(config["maskcam"]["alert-min-visible-people"])
@@ -296,6 +321,12 @@ def release_udp_port(port_number):
 def handle_file_saving(
     video_period, video_duration, ram_dir, hdd_dir, force_save, mqtt_client=None
 ):
+    """
+    Noah:
+    Handle file saving
+    Probably won't be needed in our version as we won't be saving video to the local device, but rather utilizing the sent RTSP stream and recording that to the MQTT client.
+
+    """
     period = timedelta(seconds=video_period)
     duration = timedelta(seconds=video_duration)
     latest_start = None
@@ -349,6 +380,11 @@ def handle_file_saving(
 
 
 def finish_filesave_process(active_process, hdd_dir, force_filesave, mqtt_client=None):
+    """
+    Noah:
+    Finish file saving process
+
+    """
     terminate_process(
         active_process["name"],
         active_process["process_handler"],
@@ -410,15 +446,15 @@ if __name__ == "__main__":
             print(f"Using input from config file: {input_filename}")
 
         # Input type: file or live camera
-        is_usbcamera = USBCAM_PROTOCOL in input_filename
-        is_raspicamera = RASPICAM_PROTOCOL in input_filename
-        is_live_input = is_usbcamera or is_raspicamera
+        is_usbcamera = USBCAM_PROTOCOL in input_filename # if input_filename contains USBCAM_PROTOCOL true else false
+        is_raspicamera = RASPICAM_PROTOCOL in input_filename # if input_filename contains RASPICAM_PROTOCOL true else false
+        is_live_input = is_usbcamera or is_raspicamera # if either then true
 
         # Streaming enabled by default?
         streaming_autostart = int(config["maskcam"]["streaming-start-default"])
 
         # Fileserver: sequentially save videos (only for camera input)
-        fileserver_enabled = is_live_input and int(config["maskcam"]["fileserver-enabled"])
+        fileserver_enabled = is_live_input and int(config["maskcam"]["fileserver-enabled"]) # if is_live_input == True and config param is true then true.
         fileserver_period = int(config["maskcam"]["fileserver-video-period"])
         fileserver_duration = int(config["maskcam"]["fileserver-video-duration"])
         fileserver_force_save = int(config["maskcam"]["fileserver-force-save"])
@@ -460,9 +496,10 @@ if __name__ == "__main__":
 
         if streaming_autostart:
             print("[yellow]Starting streaming (streaming-start-default is set)[/yellow]")
-            new_command(CMD_STREAMING_START)
+            new_command(CMD_STREAMING_START) # this will queue the command to start streaming which starts the streaming_main function
 
         # Inference process: If input is a file, also saves file
+        # Noah: Inference is first process to start as it reads in data from the camera and then does the inference other processes happen afterwards
         output_filename = None if is_live_input else f"output_{input_filename.split('/')[-1]}"
         process_inference, e_interrupt_inference = start_process(
             P_INFERENCE,

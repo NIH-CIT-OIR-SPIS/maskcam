@@ -66,6 +66,9 @@ def main(config, e_external_interrupt: mp.Event = None):
     # Standard GStreamer initialization
     Gst.init(None)
 
+
+
+    # Noah: This is where we take UDP from the maskcam_inference.py process and send it to the RTSP server.
     # Start streaming
     server = GstRtspServer.RTSPServer.new()
     server.props.service = str(rtsp_port)
@@ -82,6 +85,9 @@ def main(config, e_external_interrupt: mp.Event = None):
 
     streaming_address = get_streaming_address(get_ip_address(), rtsp_port, rtsp_address)
     print(f"\n\n[green bold]Streaming[/green bold] at {streaming_address}\n\n")
+
+
+
 
     # GLib loop required for RTSP server
     g_loop = GLib.MainLoop()

@@ -9,6 +9,7 @@ config.sections()
 
 # Environment variables overriding config file values
 # Each row is: (ENV_VAR_NAME, (config-section, config-param))
+# Noah: Will need to edit and add more environmental variables regarding: video recording length, split video recording intervals of time,  and other custom model parameters.
 ENV_CONFIG_OVERRIDES = (
     ("MASKCAM_INPUT", ("maskcam", "default-input")),  # Redundant with start.sh script
     ("MASKCAM_DEVICE_ADDRESS", ("maskcam", "device-address")),

@@ -24,7 +24,7 @@
 
 import os
 import gi
-import pyds
+import pyds # Noah: pyds are where many of the nvidia specific gstreamer elements and plugins are located (i.e. DeepStream software)
 import sys
 import ipdb
 import time
@@ -72,6 +72,12 @@ e_interrupt = None
 
 
 class FaceMaskProcessor:
+    """
+    Noah:
+    Their own custom model processor for taking in the second part of the model pipeline (i.e. the output of the first YOLO model).
+    Once a person is detected this class will track them (using the norfair tracker) and then determine if they are wearing a mask or not.
+    
+    """
     def __init__(
         self, th_detection=0, th_vote=0, min_face_size=0, tracker_period=1, disable_tracker=False
     ):
@@ -309,6 +315,7 @@ def cb_buffer_probe(pad, info, cb_args):
             if face_processor.validate_detection(box_points, box_p, box_label):
                 det_data = {"label": box_label, "p": box_p}
                 detections.append(
+                    # Noah: Will need to replace eventually
                     Detection(
                         np.array(box_points),
                         data=det_data,
@@ -337,6 +344,7 @@ def cb_buffer_probe(pad, info, cb_args):
             # Filter out people with no live points (don't draw)
             drawn_people = [person for person in tracked_people if person.live_points.any()]
 
+            # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
             if face_processor.draw_tracked_people:
                 for n_person, person in enumerate(drawn_people):
                     points = person.estimate
@@ -363,6 +371,7 @@ def cb_buffer_probe(pad, info, cb_args):
                     draw_detection(display_meta, n_draw, box_points, label, color)
 
         # Raw detections
+        # Noah: Might not want to draw anything on raw frames just output JSON.
         if face_processor.draw_raw_detections:
             for n_detection, detection in enumerate(detections):
                 points = detection.points
@@ -520,6 +529,21 @@ def main(
     stats_queue: mp.Queue = None,
     e_ready: mp.Event = None,
 ):
+    """
+    Noah:
+
+    Main function for the maskcam_inference.py script. 
+    Creates a Gstreamer pipeline (using Nvidia's DeepStream SDK, and Gstreamer) that captures video from a USB/CSI camera, runs a trained model (inferenceing), and encodes the video.
+    It also utilizes the FaceMaskProcessor class (with the trained parameters) to do some extra inferencing (whether a face is wearing a mask or not) on the video. It reports these statistics.
+
+    @params:
+        config: dictionary of configuration parameters
+        input_filename: name of the input video file (actually usually the camera path)
+        output_filename: name of the output video file (optional)
+        e_external_interrupt: event to signal an external interrupt 
+        stats_queue: queue to report statistics
+        e_ready: event to signal that the pipeline is ready
+    """
     global frame_number
     global start_time
     global end_time
@@ -555,6 +579,7 @@ def main(
         print(f"Configured frames to skip inference: {skip_inference}")
 
     # FaceMask initialization
+    # Noah: Variables loaded from config file (like a mini model params)
     face_tracker_period = skip_inference + 1  # tracker_period=skipped + inference frame(1)
     face_detection_threshold = float(config["face-processor"]["detection-threshold"])
     face_voting_threshold = float(config["face-processor"]["voting-threshold"])
@@ -620,8 +645,8 @@ def main(
 
     # Create nvstreammux instance to form batches from one or more sources.
     streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
-    streammux.set_property("width", output_width)
-    streammux.set_property("height", output_height)
+    streammux.set_property("width", output_width) # Noah: This is the width of the output video
+    streammux.set_property("height", output_height) # Noah: This is the height of the output video
     streammux.set_property("enable-padding", True)  # Keeps aspect ratio, but adds black margin
     streammux.set_property("batch-size", 1)
     streammux.set_property("batched-push-timeout", 4000000)
@@ -630,9 +655,10 @@ def main(
     # videorate = make_elm_or_print_err("videorate", "Vide-rate", "Video Rate")
 
     # Inference element: object detection using TRT engine
+    # Noah: This is building the Gstreamer element that is used during inferencing of network.
     pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
     pgie.set_property("config-file-path", CONFIG_FILE)
-    pgie.set_property("interval", skip_inference)
+    pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
     convert_pre_osd = make_elm_or_print_err(
@@ -640,6 +666,7 @@ def main(
     )
 
     # OSD: to draw on the RGBA buffer
+    # Noah: Will need to comment out the 'nvosd' element as it overlays text ontop of the RGBA image which we won't want (we can store in metadata)
     nvosd = make_elm_or_print_err("nvdsosd", "onscreendisplay", "OSD (nvosd)")
     nvosd.set_property("process-mode", 2)  # 0: CPU Mode, 1: GPU (only dGPU), 2: VIC (Jetson only)
     # nvosd.set_property("display-bbox", False)  # Bug: Removes all squares
@@ -661,6 +688,7 @@ def main(
     capsfilter.set_property("caps", caps)
 
     # Encoder: H265 has more efficient compression
+    # Noah: Make sure if using H265 encoding you are utilizing hardware encoding.
     if codec == CODEC_MP4:
         print("Creating MPEG-4 stream")
         encoder = make_elm_or_print_err("avenc_mpeg4", "encoder", "Encoder")
@@ -684,9 +712,12 @@ def main(
     encoder.set_property("insert-sps-pps", 1)
     encoder.set_property("bitrate", output_bitrate)
 
+
+    # Splitting stream
     splitter_file_udp = make_elm_or_print_err("tee", "tee_file_udp", "Splitter file/UDP")
 
     # UDP streaming
+    # Noah: This UDP output will be recieved by the maskcam_streaming.py process in the maskcam_run.py file
     queue_udp = make_elm_or_print_err("queue", "queue_udp", "UDP queue")
     multiudpsink = make_elm_or_print_err("multiudpsink", "multi udpsink", "Multi UDP Sink")
     # udpsink.set_property("host", "127.0.0.1")
@@ -708,9 +739,10 @@ def main(
     else:  # Fake sink, no save
         fakesink = make_elm_or_print_err("fakesink", "fakesink", "Fake Sink")
 
+    # Noah: After setting up the Gstreamer elements for taking frames from camera and inferencing we then construct the Gstreamer pipeline.
     # Add elements to the pipeline
     if camera_input:
-        pipeline.add(source)
+        pipeline.add(source) # Noah: source is the USB/CSI Camera interface
         pipeline.add(caps_camera)
         pipeline.add(vidconvsrc)
         pipeline.add(nvvidconvsrc)
@@ -744,6 +776,7 @@ def main(
     print("Linking elements in the Pipeline \n")
 
     # Pipeline Links
+    # Noah: Linked like so: source -> caps_camera -> nvvidconvsrc -> ... -> multiudpsink
     if camera_input:
         source.link(caps_camera)
         caps_camera.link(vidconvsrc)
@@ -778,7 +811,8 @@ def main(
     else:
         tee_file.link(fakesink.get_static_pad("sink"))
 
-    # Output to UDP
+    # Output to UDP 
+    # Noah: Output will be read in by maskcam_streaming.py process, and then fowarded to an rtsp stream out of the Jetson device
     tee_udp.link(queue_udp.get_static_pad("sink"))
     queue_udp.link(rtppay)
     rtppay.link(multiudpsink)
@@ -793,6 +827,7 @@ def main(
     cb_args = (face_processor, e_ready)
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
 
+    # Noah: Starting main Gstreamer process
     # GLib loop required for RTSP server
     g_loop = GLib.MainLoop()
     g_context = g_loop.get_context()
@@ -800,6 +835,7 @@ def main(
     # GStreamer message bus
     bus = pipeline.get_bus()
 
+    # Noah: Checking flag e_external_interrupt
     if e_external_interrupt is None:
         # Use threading instead of mp.Event() for sigint_handler, see:
         # https://bugs.python.org/issue41606
@@ -815,6 +851,8 @@ def main(
 
     # After setting pipeline to PLAYING, stop it even on exceptions
     try:
+        # Noah: If we want synchronization between other Jetson's and centeral mqtt client we will need the mqtt client to query our Jetson servers on their current time. Then we compare each of the Jetsons' times to the mqtt client's time and update accordingly. 
+        # This update is only done after a recording split (30 minutes length of video split max)
         time_start_playing = time.time()
 
         # Timer to add statistics to queue
@@ -848,12 +886,14 @@ def main(
                     running = False
             if e_interrupt.is_set():
                 # Send EOS to container to generate a valid mp4 file
+                # Noah: EOS (End of Stream)
                 if output_filename is not None:
                     container.send_event(Gst.Event.new_eos())
                     multiudpsink.send_event(Gst.Event.new_eos())
                 else:
                     pipeline.send_event(Gst.Event.new_eos())  # fakesink EOS won't work
 
+        
         end_time = time.time()
         print("Inference main loop ending.")
         pipeline.set_state(Gst.State.NULL)
