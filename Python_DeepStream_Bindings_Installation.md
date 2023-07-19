@@ -16,7 +16,7 @@ apt install python3-gi python3-dev python3-gst-1.0 python-gi-dev git python-dev 
 
 ```
 cd /opt/nvidia/deepstream/deepstream-6.2/sources/ && \
-git clone git clone https://github.com/NVIDIA-AI-IOT/deepstream_python_apps.git && \
+git clone https://github.com/NVIDIA-AI-IOT/deepstream_python_apps.git && \
 cd /opt/nvidia/deepstream/deepstream/sources/ && \
 cp -r /opt/nvidia/deepstream/deepstream-6.2/sources/deepstream_python_apps deepstream_python_apps
 ```
