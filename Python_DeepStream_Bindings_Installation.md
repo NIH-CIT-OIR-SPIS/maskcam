@@ -56,7 +56,7 @@ sudo su
 cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/ && \
 git submodule update --init && \
 mkdir build && cd build && \
-cmake ..  -DPYTHON_MAJOR_VERSION=3 -DPYTHON_MINOR_VERSION=8 -DPIP_PLATFORM=linux_aarch64
+cmake ..  -DPYTHON_MAJOR_VERSION=3 -DPYTHON_MINOR_VERSION=8 -DPIP_PLATFORM=linux_aarch64 && \
 make -j4 && \
 exit
 ```
