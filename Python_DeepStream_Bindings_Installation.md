@@ -39,26 +39,28 @@ sudo su
 
 
 ```
-cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/3rdparty/gst-python/
-./autogen.sh
-make
+cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/3rdparty/gst-python/ && \
+./autogen.sh && \
+make && \
 exit
 ```
 
 ```
-sudo make install
+sudo make install && \
 sudo su
 ```
 
 
 
 ```
-cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/
-git submodule update --init
-mkdir build && cd build
+cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/ && \
+git submodule update --init && \
+mkdir build && cd build && \
 cmake ..  -DPYTHON_MAJOR_VERSION=3 -DPYTHON_MINOR_VERSION=8 -DPIP_PLATFORM=linux_aarch64
-make -j4
+make -j4 && \
 exit
+```
+```
 cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/build/
 python3 -m pip install ./pyds-1.1.6-py3-none*.whl
 mv pyds.so pyds.egg-info ~/.local/lib/python3.8/site-packages/
