@@ -7,7 +7,7 @@ sudo apt install gir1.2-gst-rtsp-server-1.0
 ```
 
 ```
-vi .bashrc
+vi ~/.bashrc
 ```
 Go to line where you see
 export PATH=/usr/local/cuda-11.4/bin:$PATH
