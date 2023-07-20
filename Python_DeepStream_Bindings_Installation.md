@@ -63,6 +63,6 @@ exit
 ```
 cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/build/ && \
 python3 -m pip install ./pyds-1.1.6-py3-none*.whl && \
-mv pyds.so pyds.egg-info ~/.local/lib/python3.8/site-packages/
+sudo mv pyds.so pyds.egg-info ~/.local/lib/python3.8/site-packages/
 ```
 
