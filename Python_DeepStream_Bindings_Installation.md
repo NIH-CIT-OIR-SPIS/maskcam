@@ -62,14 +62,14 @@ exit
 ```
 ```
 cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/build/ && \
-python3 -m pip install ./pyds-1.1.6-py3-none*.whl && \
+python3.8 -m pip install ./pyds-1.1.6-py3-none*.whl && \
 sudo mv pyds.so pyds.egg-info ~/.local/lib/python3.8/site-packages/ && \
 cd
 ```
 
 Check that it has installed
 ```
-python3 -c "import pyds"
+python3.8 -c "import pyds"
 ```
 
 Should see no output (which means there is no error importing the module)
