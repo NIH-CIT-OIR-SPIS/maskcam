@@ -24,10 +24,6 @@ sudo reboot
 ```
 
 Extra notes for dev:
-To upgrade numpy if errors
-```
-
-```
 If dependency error: 
 "
 opencv-python 4.8.0.74 has requirement numpy>=1.19.3; python_version >= "3.6" and platform_system == "Linux" and platform_machine == "aarch64", but you'll have numpy 1.17.4 which is incompatible.
