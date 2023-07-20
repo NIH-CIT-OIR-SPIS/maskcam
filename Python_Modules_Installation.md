@@ -2,7 +2,7 @@ Install things
 
 
 ```
-python3 -m pip install opencv-python rich pyparsing pygobject matplotlib Pillow pexpect cryptography filterpy paho-mqtt simplejson onnx scipy Cython scikit-learn ipdb && \
+python3 -m pip install numpy opencv-python rich pyparsing pygobject matplotlib Pillow pexpect cryptography filterpy paho-mqtt simplejson onnx scipy Cython scikit-learn ipdb && \
 sudo apt install gir1.2-gst-rtsp-server-1.0
 ```
 
