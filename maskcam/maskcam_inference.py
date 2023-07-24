@@ -678,11 +678,11 @@ def main(
 
     # OSD: to draw on the RGBA buffer
     # Noah: Will need to comment out the 'nvosd' element as it overlays text ontop of the RGBA image which we won't want (we can store in metadata)
-    nvosd = make_elm_or_print_err("nvdsosd", "onscreendisplay", "OSD (nvosd)")
-    nvosd.set_property("process-mode", 2)  # 0: CPU Mode, 1: GPU (only dGPU), 2: VIC (Jetson only)
-    # nvosd.set_property("display-bbox", False)  # Bug: Removes all squares
-    nvosd.set_property("display-clock", False)
-    nvosd.set_property("display-text", True)  # Needed for any text
+    # nvosd = make_elm_or_print_err("nvdsosd", "onscreendisplay", "OSD (nvosd)")
+    # nvosd.set_property("process-mode", 2)  # 0: CPU Mode, 1: GPU (only dGPU), 2: VIC (Jetson only)
+    # # nvosd.set_property("display-bbox", False)  # Bug: Removes all squares
+    # nvosd.set_property("display-clock", False)
+    # nvosd.set_property("display-text", True)  # Needed for any text
 
     # Finally encode and save the osd output
     queue = make_elm_or_print_err("queue", "queue", "Queue")
@@ -770,7 +770,7 @@ def main(
     #pipeline.add(pgie)
 
     pipeline.add(convert_pre_osd)
-    pipeline.add(nvosd)
+    #pipeline.add(nvosd)
     pipeline.add(queue)
     pipeline.add(convert_post_osd)
     pipeline.add(capsfilter)
@@ -809,8 +809,7 @@ def main(
     #streammux.link(pgie)
     #pgie.link(convert_pre_osd)
     streammux.link(convert_pre_osd)
-    convert_pre_osd.link(nvosd)
-    nvosd.link(queue)
+    convert_pre_osd.link(queue)
     queue.link(convert_post_osd)
     convert_post_osd.link(capsfilter)
     capsfilter.link(encoder)
