@@ -490,6 +490,11 @@ def make_elm_or_print_err(factoryname, name, printedname):
     elm = Gst.ElementFactory.make(factoryname, name)
     if not elm:
         print("Unable to create ", printedname, error=True)
+        if "264" in printedname:
+
+            print("Listed properties ")
+            Gst.ElementFactory.list_properties(factoryname)
+            
         show_troubleshooting()
     return elm
 
@@ -700,7 +705,8 @@ def main(
         # encoder.set_property("preset-level", 1)
         # encoder.set_property("bufapi-version", 1)
         encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
-        encoder.set_property("preset-level", 1)
+        encoder.get_property
+        #encoder.set_property("preset-level", 1)
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
     else:  # Default: H265 (recommended)
