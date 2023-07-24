@@ -802,7 +802,7 @@ def main(
     print("Now playing:")
     # print(Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL))
     # save dot file: dot -Tpng pipeline.dot > pipeline.png
-    Gst.debug_bin_to_dot_file(pipeline, Gst.DebugGraphDetails.ALL, "../pipeline")
+    
 
     print("Linking elements in the Pipeline \n")
 
@@ -864,6 +864,17 @@ def main(
     # cb_args = (face_processor, e_ready)
     # osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
 
+    # Print dot file AFTER linking
+    # send dot file to graphviz to generate pdf
+    fie = Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL)
+
+    # Write to file
+    with open("~/pipeline.dot", "w") as f:
+        f.write(fie)
+
+    
+
+    
     # Noah: Starting main Gstreamer process
     # GLib loop required for RTSP server
     g_loop = GLib.MainLoop()
