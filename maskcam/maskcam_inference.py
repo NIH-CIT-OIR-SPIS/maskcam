@@ -693,7 +693,7 @@ def main(
     # Video capabilities: check format and GPU/CPU location
     capsfilter = make_elm_or_print_err("capsfilter", "capsfilter", "capsfilter")
     if use_h264_enc:
-        caps = Gst.Caps.from_string("video/x-raw, format=YUY2")
+        caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
     elif codec == CODEC_MP4:  # Not hw accelerated
         caps = Gst.Caps.from_string("video/x-raw, format=I420")
     else:  # hw accelerated
