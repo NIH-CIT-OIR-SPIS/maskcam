@@ -869,7 +869,7 @@ def main(
     fie = Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL)
 
     # Write to file
-    with open("~/pipeline.dot", "w") as f:
+    with open("pipeline.dot", "w") as f:
         f.write(fie)
 
     
