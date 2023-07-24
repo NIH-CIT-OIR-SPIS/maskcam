@@ -853,6 +853,12 @@ def main(
 
     # GStreamer message bus
     bus = pipeline.get_bus()
+    
+    fie = Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL)
+
+    # Write to file
+    with open("pipeline.dot", "w") as f:
+        f.write(fie)
 
     # Noah: Checking flag e_external_interrupt
     if e_external_interrupt is None:
