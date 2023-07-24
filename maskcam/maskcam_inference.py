@@ -826,8 +826,7 @@ def main(
     # encoder.link(splitter_file_udp)
 
     srcpad.link(sinkpad)
-    streammux.link(queue)
-    queue.link(capsfilter)
+    streammux.link(capsfilter)
     capsfilter.link(encoder)
     encoder.link(splitter_file_udp)
 
