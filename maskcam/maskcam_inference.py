@@ -796,6 +796,10 @@ def main(
     pipeline.add(rtppay)
     pipeline.add(multiudpsink)
 
+    # Print the pipeline structure
+    print("Now playing:")
+    print(Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL))
+    
     print("Linking elements in the Pipeline \n")
 
     # Pipeline Links
