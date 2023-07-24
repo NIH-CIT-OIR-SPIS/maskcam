@@ -256,159 +256,159 @@ e_interrupt = None
 #     display_meta.num_labels = n_draw + 1
 
 
-# def cb_buffer_probe(pad, info, cb_args):
-#     global frame_number
-#     global start_time
+def cb_buffer_probe(pad, info, cb_args):
+    global frame_number
+    global start_time
 
-#     face_processor, e_ready = cb_args
-#     gst_buffer = info.get_buffer()
-#     if not gst_buffer:
-#         print("Unable to get GstBuffer", error=True)
-#         return
+    face_processor, e_ready = cb_args
+    gst_buffer = info.get_buffer()
+    if not gst_buffer:
+        print("Unable to get GstBuffer", error=True)
+        return
 
-#     # Set e_ready event to notify the pipeline is working (e.g: for orchestrator)
-#     if e_ready is not None and not e_ready.is_set():
-#         print("Inference pipeline setting [green]e_ready[/green]")
-#         e_ready.set()
+    # Set e_ready event to notify the pipeline is working (e.g: for orchestrator)
+    if e_ready is not None and not e_ready.is_set():
+        print("Inference pipeline setting [green]e_ready[/green]")
+        e_ready.set()
 
-#     # Retrieve batch metadata from the gst_buffer
-#     # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
-#     # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
-#     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
+    # Retrieve batch metadata from the gst_buffer
+    # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
+    # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
+    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
 
-#     l_frame = batch_meta.frame_meta_list
-#     while l_frame is not None:
-#         try:
-#             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
-#             # The casting is done by pyds.glist_get_nvds_frame_meta()
-#             # The casting also keeps ownership of the underlying memory
-#             # in the C code, so the Python garbage collector will leave
-#             # it alone.
-#             # frame_meta = pyds.glist_get_nvds_frame_meta(l_frame.data)
-#             frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-#         except StopIteration:
-#             break
+    l_frame = batch_meta.frame_meta_list
+    while l_frame is not None:
+        try:
+            # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
+            # The casting is done by pyds.glist_get_nvds_frame_meta()
+            # The casting also keeps ownership of the underlying memory
+            # in the C code, so the Python garbage collector will leave
+            # it alone.
+            # frame_meta = pyds.glist_get_nvds_frame_meta(l_frame.data)
+            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+        except StopIteration:
+            break
 
-#         frame_number = frame_meta.frame_num
-#         # num_detections = frame_meta.num_obj_meta
-#         l_obj = frame_meta.obj_meta_list
-#         detections = []
-#         obj_meta_list = []
-#         while l_obj is not None:
-#             try:
-#                 # Casting l_obj.data to pyds.NvDsObjectMeta
-#                 # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
-#                 obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-#             except StopIteration:
-#                 break
-#             obj_meta_list.append(obj_meta)
-#             obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
-#             box = obj_meta.rect_params
-#             # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
+        frame_number = frame_meta.frame_num
+        # num_detections = frame_meta.num_obj_meta
+        l_obj = frame_meta.obj_meta_list
+        # detections = []
+        # obj_meta_list = []
+        # while l_obj is not None:
+        #     try:
+        #         # Casting l_obj.data to pyds.NvDsObjectMeta
+        #         # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
+        #         obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
+        #     except StopIteration:
+        #         break
+        #     obj_meta_list.append(obj_meta)
+        #     obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
+        #     box = obj_meta.rect_params
+        #     # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
 
-#             box_points = (
-#                 (box.left, box.top),
-#                 (box.left + box.width, box.top + box.height),
-#             )
-#             box_p = obj_meta.confidence
-#             box_label = obj_meta.obj_label
-#             if face_processor.validate_detection(box_points, box_p, box_label):
-#                 det_data = {"label": box_label, "p": box_p}
-#                 detections.append(
-#                     # Noah: Will need to replace eventually
-#                     Detection(
-#                         np.array(box_points),
-#                         data=det_data,
-#                     )
-#                 )
-#                 # print(f"Added detection: {det_data}")
-#             try:
-#                 l_obj = l_obj.next
-#             except StopIteration:
-#                 break
+        #     box_points = (
+        #         (box.left, box.top),
+        #         (box.left + box.width, box.top + box.height),
+        #     )
+        #     box_p = obj_meta.confidence
+        #     box_label = obj_meta.obj_label
+        #     if face_processor.validate_detection(box_points, box_p, box_label):
+        #         det_data = {"label": box_label, "p": box_p}
+        #         detections.append(
+        #             # Noah: Will need to replace eventually
+        #             Detection(
+        #                 np.array(box_points),
+        #                 data=det_data,
+        #             )
+        #         )
+        #         # print(f"Added detection: {det_data}")
+        #     try:
+        #         l_obj = l_obj.next
+        #     except StopIteration:
+        #         break
 
-#         # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
-#         for obj_meta in obj_meta_list:
-#             # Remove this to avoid drawing label texts
-#             pyds.nvds_remove_obj_meta_from_frame(frame_meta, obj_meta)
-#         obj_meta_list = None
+        # # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
+        # for obj_meta in obj_meta_list:
+        #     # Remove this to avoid drawing label texts
+        #     pyds.nvds_remove_obj_meta_from_frame(frame_meta, obj_meta)
+        # obj_meta_list = None
 
-#         # Each meta object carries max 16 rects/labels/etc.
-#         max_drawings_per_meta = 16  # This is hardcoded, not documented
+        # # Each meta object carries max 16 rects/labels/etc.
+        # max_drawings_per_meta = 16  # This is hardcoded, not documented
 
-#         if face_processor.tracker is not None:
-#             # Track, count and draw tracked people
-#             tracked_people = face_processor.tracker.update(
-#                 detections, period=face_processor.tracker_period
-#             )
-#             # Filter out people with no live points (don't draw)
-#             drawn_people = [person for person in tracked_people if person.live_points.any()]
+        # if face_processor.tracker is not None:
+        #     # Track, count and draw tracked people
+        #     tracked_people = face_processor.tracker.update(
+        #         detections, period=face_processor.tracker_period
+        #     )
+        #     # Filter out people with no live points (don't draw)
+        #     drawn_people = [person for person in tracked_people if person.live_points.any()]
 
-#             # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
-#             if face_processor.draw_tracked_people:
-#                 for n_person, person in enumerate(drawn_people):
-#                     points = person.estimate
-#                     box_points = points.clip(0).astype(int)
+        #     # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
+        #     if face_processor.draw_tracked_people:
+        #         for n_person, person in enumerate(drawn_people):
+        #             points = person.estimate
+        #             box_points = points.clip(0).astype(int)
 
-#                     # Update mask votes
-#                     face_processor.add_detection(
-#                         person.id,
-#                         person.last_detection.data["label"],
-#                         person.last_detection.data["p"],
-#                     )
-#                     label, color = face_processor.get_person_label(person.id)
+        #             # Update mask votes
+        #             face_processor.add_detection(
+        #                 person.id,
+        #                 person.last_detection.data["label"],
+        #                 person.last_detection.data["p"],
+        #             )
+        #             label, color = face_processor.get_person_label(person.id)
 
-#                     # Index of this person's drawing in the current meta
-#                     n_draw = n_person % max_drawings_per_meta
+        #             # Index of this person's drawing in the current meta
+        #             n_draw = n_person % max_drawings_per_meta
 
-#                     if n_draw == 0:  # Initialize meta
-#                         # Acquiring a display meta object. The memory ownership remains in
-#                         # the C code so downstream plugins can still access it. Otherwise
-#                         # the garbage collector will claim it when this probe function exits.
-#                         display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-#                         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        #             if n_draw == 0:  # Initialize meta
+        #                 # Acquiring a display meta object. The memory ownership remains in
+        #                 # the C code so downstream plugins can still access it. Otherwise
+        #                 # the garbage collector will claim it when this probe function exits.
+        #                 display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        #                 pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
 
-#                     draw_detection(display_meta, n_draw, box_points, label, color)
+        #             draw_detection(display_meta, n_draw, box_points, label, color)
 
-#         # Raw detections
-#         # Noah: Might not want to draw anything on raw frames just output JSON.
-#         if face_processor.draw_raw_detections:
-#             for n_detection, detection in enumerate(detections):
-#                 points = detection.points
-#                 box_points = points.clip(0).astype(int)
-#                 label = detection.data["label"]
-#                 if label == LABEL_MASK:
-#                     color = face_processor.color_mask
-#                 elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
-#                     color = face_processor.color_no_mask
-#                 else:
-#                     color = face_processor.color_unknown
-#                 label = f"{label} | {detection.data['p']:.2f}"
-#                 n_draw = n_detection % max_drawings_per_meta
+        # Raw detections
+        # Noah: Might not want to draw anything on raw frames just output JSON.
+        # if face_processor.draw_raw_detections:
+        #     for n_detection, detection in enumerate(detections):
+        #         points = detection.points
+        #         box_points = points.clip(0).astype(int)
+        #         label = detection.data["label"]
+        #         if label == LABEL_MASK:
+        #             color = face_processor.color_mask
+        #         elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
+        #             color = face_processor.color_no_mask
+        #         else:
+        #             color = face_processor.color_unknown
+        #         label = f"{label} | {detection.data['p']:.2f}"
+        #         n_draw = n_detection % max_drawings_per_meta
 
-#                 if n_draw == 0:  # Initialize meta
-#                     # Acquiring a display meta object. The memory ownership remains in
-#                     # the C code so downstream plugins can still access it. Otherwise
-#                     # the garbage collector will claim it when this probe function exits.
-#                     display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-#                     pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
-#                 draw_detection(display_meta, n_draw, box_points, label, color)
+        #         if n_draw == 0:  # Initialize meta
+        #             # Acquiring a display meta object. The memory ownership remains in
+        #             # the C code so downstream plugins can still access it. Otherwise
+        #             # the garbage collector will claim it when this probe function exits.
+        #             display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        #             pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        #         draw_detection(display_meta, n_draw, box_points, label, color)
 
-#             # Using pyds.get_string() to get display_text as string
-#             # print(pyds.get_string(py_nvosd_text_params.display_text))
-#             # print(".", end="", flush=True)
-#         # print("")
-#         if not frame_number % FRAMES_LOG_INTERVAL:
-#             print(f"Processed {frame_number} frames...")
+            # Using pyds.get_string() to get display_text as string
+            # print(pyds.get_string(py_nvosd_text_params.display_text))
+            # print(".", end="", flush=True)
+        # print("")
+        if not frame_number % FRAMES_LOG_INTERVAL:
+            print(f"Processed {frame_number} frames...")
 
-#         try:
-#             l_frame = l_frame.next
-#         except StopIteration:
-#             break
-#     # Start timer at the end of first frame processing
-#     if start_time is None:
-#         start_time = time.time()
-#     return Gst.PadProbeReturn.OK
+        try:
+            l_frame = l_frame.next
+        except StopIteration:
+            break
+    # Start timer at the end of first frame processing
+    if start_time is None:
+        start_time = time.time()
+    return Gst.PadProbeReturn.OK
 
 
 def cb_newpad(decodebin, decoder_src_pad, data):
