@@ -696,9 +696,11 @@ def main(
         rtppay = make_elm_or_print_err("rtpmp4vpay", "rtppay", "RTP MPEG-44 Payload")
     elif codec == CODEC_H264:
         print("Creating H264 stream")
-        encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
+        # encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
+        # encoder.set_property("preset-level", 1)
+        # encoder.set_property("bufapi-version", 1)
+        encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
         encoder.set_property("preset-level", 1)
-        encoder.set_property("bufapi-version", 1)
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
     else:  # Default: H265 (recommended)
