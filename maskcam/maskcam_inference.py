@@ -837,12 +837,12 @@ def main(
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
     # had got all the metadata.
-    osdsinkpad = nvosd.get_static_pad("sink")
-    if not osdsinkpad:
-        print("Unable to get sink pad of nvosd", error=True)
+    # osdsinkpad = nvosd.get_static_pad("sink")
+    # if not osdsinkpad:
+    #     print("Unable to get sink pad of nvosd", error=True)
 
-    cb_args = (False, e_ready)
-    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
+    # cb_args = (False, e_ready)
+    # osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
 
     # Noah: Starting main Gstreamer process
     # GLib loop required for RTSP server
