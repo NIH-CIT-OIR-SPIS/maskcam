@@ -672,9 +672,9 @@ def main(
     # pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
-    convert_pre_osd = make_elm_or_print_err(
-        "nvvideoconvert", "convert_pre_osd", "Converter NV12->RGBA"
-    )
+    # convert_pre_osd = make_elm_or_print_err(
+    #     "nvvideoconvert", "convert_pre_osd", "Converter NV12->RGBA"
+    # )
 
     # OSD: to draw on the RGBA buffer
     # Noah: Will need to comment out the 'nvosd' element as it overlays text ontop of the RGBA image which we won't want (we can store in metadata)
@@ -685,18 +685,18 @@ def main(
     # nvosd.set_property("display-text", True)  # Needed for any text
 
     # Finally encode and save the osd output
-    queue = make_elm_or_print_err("queue", "queue", "Queue")
-    convert_post_osd = make_elm_or_print_err(
-        "nvvideoconvert", "convert_post_osd", "Converter RGBA->NV12"
-    )
+    # queue = make_elm_or_print_err("queue", "queue", "Queue")
+    # convert_post_osd = make_elm_or_print_err(
+    #     "nvvideoconvert", "convert_post_osd", "Converter RGBA->NV12"
+    # )
 
     # Video capabilities: check format and GPU/CPU location
-    capsfilter = make_elm_or_print_err("capsfilter", "capsfilter", "capsfilter")
-    if codec == CODEC_MP4:  # Not hw accelerated
-        caps = Gst.Caps.from_string("video/x-raw, format=I420")
-    else:  # hw accelerated
-        caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
-    capsfilter.set_property("caps", caps)
+    # capsfilter = make_elm_or_print_err("capsfilter", "capsfilter", "capsfilter")
+    # if codec == CODEC_MP4:  # Not hw accelerated
+    #     caps = Gst.Caps.from_string("video/x-raw, format=I420")
+    # else:  # hw accelerated
+    #     caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
+    # capsfilter.set_property("caps", caps)
 
     # Encoder: H265 has more efficient compression
     # Noah: Make sure if using H265 encoding you are utilizing hardware encoding.
@@ -762,18 +762,18 @@ def main(
         pipeline.add(source) # Noah: source is the USB/CSI Camera interface
         pipeline.add(caps_camera)
         pipeline.add(vidconvsrc)
-        pipeline.add(nvvidconvsrc)
-        pipeline.add(caps_vidconvsrc)
+        # pipeline.add(nvvidconvsrc)
+        # pipeline.add(caps_vidconvsrc)
     else:
         pipeline.add(source_bin)
     pipeline.add(streammux)
     #pipeline.add(pgie)
 
-    pipeline.add(convert_pre_osd)
+    #pipeline.add(convert_pre_osd)
     #pipeline.add(nvosd)
-    pipeline.add(queue)
-    pipeline.add(convert_post_osd)
-    pipeline.add(capsfilter)
+    # pipeline.add(queue)
+    # pipeline.add(convert_post_osd)
+    # pipeline.add(capsfilter)
     pipeline.add(encoder)
     pipeline.add(splitter_file_udp)
 
@@ -797,22 +797,24 @@ def main(
     if camera_input:
         source.link(caps_camera)
         caps_camera.link(vidconvsrc)
-        vidconvsrc.link(nvvidconvsrc)
-        nvvidconvsrc.link(caps_vidconvsrc)
-        srcpad = caps_vidconvsrc.get_static_pad("src")
+        #vidconvsrc.link(nvvidconvsrc)
+        #nvvidconvsrc.link(caps_vidconvsrc)
+        #srcpad = caps_vidconvsrc.get_static_pad("src")
     else:
         srcpad = source_bin.get_static_pad("src")
-    sinkpad = streammux.get_request_pad("sink_0")
-    if not srcpad or not sinkpad:
-        print("Unable to get file source or mux sink pads", error=True)
-    srcpad.link(sinkpad)
+    #sinkpad = streammux.get_request_pad("sink_0")
+    # if not srcpad or not sinkpad:
+    #     print("Unable to get file source or mux sink pads", error=True)
+    #srcpad.link(sinkpad)
     #streammux.link(pgie)
     #pgie.link(convert_pre_osd)
-    streammux.link(convert_pre_osd)
-    convert_pre_osd.link(queue)
-    queue.link(convert_post_osd)
-    convert_post_osd.link(capsfilter)
-    capsfilter.link(encoder)
+    #streammux.link(convert_pre_osd)
+    #convert_pre_osd.link(queue)
+    #queue.link(convert_post_osd)
+    #convert_post_osd.link(capsfilter)
+    #capsfilter.link(encoder)
+    vidconvsrc.link(streammux)
+    streammux.link(encoder)
     encoder.link(splitter_file_udp)
 
     # Split stream to file and rtsp
