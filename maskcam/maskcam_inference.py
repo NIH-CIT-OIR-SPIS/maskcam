@@ -41,7 +41,7 @@ gi.require_version("Gst", "1.0")
 gi.require_version("GstRtspServer", "1.0")
 from gi.repository import GLib, Gst, GstRtspServer
 
-from norfair.tracker import Tracker, Detection
+#from norfair.tracker import Tracker, Detection
 
 from .config import config, print_config_overrides
 from .prints import print_inference as print
@@ -71,126 +71,126 @@ console = Console()
 e_interrupt = None
 
 
-class FaceMaskProcessor:
-    """
-    Noah:
-    Their own custom model processor for taking in the second part of the model pipeline (i.e. the output of the first YOLO model).
-    Once a person is detected this class will track them (using the norfair tracker) and then determine if they are wearing a mask or not.
+# class FaceMaskProcessor:
+#     """
+#     Noah:
+#     Their own custom model processor for taking in the second part of the model pipeline (i.e. the output of the first YOLO model).
+#     Once a person is detected this class will track them (using the norfair tracker) and then determine if they are wearing a mask or not.
     
-    """
-    def __init__(
-        self, th_detection=0, th_vote=0, min_face_size=0, tracker_period=1, disable_tracker=False
-    ):
-        self.people_votes = {}
-        self.current_people = set()
-        self.th_detection = th_detection
-        self.th_vote = th_vote
-        self.tracker_period = tracker_period
-        self.min_face_size = min_face_size
-        self.disable_detection_validation = False
-        self.min_votes = 5
-        self.max_votes = 50
-        self.color_mask = (0.0, 1.0, 0.0)  # green
-        self.color_no_mask = (1.0, 0.0, 0.0)  # red
-        self.color_unknown = (1.0, 1.0, 0.0)  # yellow
-        self.draw_raw_detections = disable_tracker
-        self.draw_tracked_people = not disable_tracker
-        self.stats_lock = threading.Lock()
+#     """
+#     def __init__(
+#         self, th_detection=0, th_vote=0, min_face_size=0, tracker_period=1, disable_tracker=False
+#     ):
+#         self.people_votes = {}
+#         self.current_people = set()
+#         self.th_detection = th_detection
+#         self.th_vote = th_vote
+#         self.tracker_period = tracker_period
+#         self.min_face_size = min_face_size
+#         self.disable_detection_validation = False
+#         self.min_votes = 5
+#         self.max_votes = 50
+#         self.color_mask = (0.0, 1.0, 0.0)  # green
+#         self.color_no_mask = (1.0, 0.0, 0.0)  # red
+#         self.color_unknown = (1.0, 1.0, 0.0)  # yellow
+#         self.draw_raw_detections = disable_tracker
+#         self.draw_tracked_people = not disable_tracker
+#         self.stats_lock = threading.Lock()
 
-        # Norfair Tracker
-        if disable_tracker:
-            self.tracker = None
-        else:
-            self.tracker = Tracker(
-                distance_function=self.keypoints_distance,
-                detection_threshold=self.th_detection,
-                distance_threshold=1,
-                point_transience=8,
-                hit_inertia_min=15,
-                hit_inertia_max=45,
-            )
+#         # Norfair Tracker
+#         if disable_tracker:
+#             self.tracker = None
+#         else:
+#             self.tracker = Tracker(
+#                 distance_function=self.keypoints_distance,
+#                 detection_threshold=self.th_detection,
+#                 distance_threshold=1,
+#                 point_transience=8,
+#                 hit_inertia_min=15,
+#                 hit_inertia_max=45,
+#             )
 
-    def keypoints_distance(self, detected_pose, tracked_pose):
-        detected_points = detected_pose.points
-        estimated_pose = tracked_pose.estimate
-        min_box_size = min(
-            max(
-                detected_points[1][0] - detected_points[0][0],  # x2 - x1
-                detected_points[1][1] - detected_points[0][1],  # y2 - y1
-                1,
-            ),
-            max(
-                estimated_pose[1][0] - estimated_pose[0][0],  # x2 - x1
-                estimated_pose[1][1] - estimated_pose[0][1],  # y2 - y1
-                1,
-            ),
-        )
-        mean_distance_normalized = (
-            np.mean(np.linalg.norm(detected_points - estimated_pose, axis=1)) / min_box_size
-        )
-        return mean_distance_normalized
+#     def keypoints_distance(self, detected_pose, tracked_pose):
+#         detected_points = detected_pose.points
+#         estimated_pose = tracked_pose.estimate
+#         min_box_size = min(
+#             max(
+#                 detected_points[1][0] - detected_points[0][0],  # x2 - x1
+#                 detected_points[1][1] - detected_points[0][1],  # y2 - y1
+#                 1,
+#             ),
+#             max(
+#                 estimated_pose[1][0] - estimated_pose[0][0],  # x2 - x1
+#                 estimated_pose[1][1] - estimated_pose[0][1],  # y2 - y1
+#                 1,
+#             ),
+#         )
+#         mean_distance_normalized = (
+#             np.mean(np.linalg.norm(detected_points - estimated_pose, axis=1)) / min_box_size
+#         )
+#         return mean_distance_normalized
 
-    def validate_detection(self, box_points, score, label):
-        if self.disable_detection_validation:
-            return True
-        box_width = box_points[1][0] - box_points[0][0]
-        box_height = box_points[1][1] - box_points[0][1]
-        return min(box_width, box_height) >= self.min_face_size and score >= self.th_detection
+#     def validate_detection(self, box_points, score, label):
+#         if self.disable_detection_validation:
+#             return True
+#         box_width = box_points[1][0] - box_points[0][0]
+#         box_height = box_points[1][1] - box_points[0][1]
+#         return min(box_width, box_height) >= self.min_face_size and score >= self.th_detection
 
-    def add_detection(self, person_id, label, score):
-        # This function is called from streaming thread
-        with self.stats_lock:
-            self.current_people.add(person_id)
-            if person_id not in self.people_votes:
-                self.people_votes[person_id] = 0
-            if score > self.th_vote:
-                if label == LABEL_MASK:
-                    self.people_votes[person_id] += 1
-                elif label == LABEL_NO_MASK or LABEL_MISPLACED:
-                    self.people_votes[person_id] -= 1
-                # max_votes limit
-                self.people_votes[person_id] = np.clip(
-                    self.people_votes[person_id], -self.max_votes, self.max_votes
-                )
+#     def add_detection(self, person_id, label, score):
+#         # This function is called from streaming thread
+#         with self.stats_lock:
+#             self.current_people.add(person_id)
+#             if person_id not in self.people_votes:
+#                 self.people_votes[person_id] = 0
+#             if score > self.th_vote:
+#                 if label == LABEL_MASK:
+#                     self.people_votes[person_id] += 1
+#                 elif label == LABEL_NO_MASK or LABEL_MISPLACED:
+#                     self.people_votes[person_id] -= 1
+#                 # max_votes limit
+#                 self.people_votes[person_id] = np.clip(
+#                     self.people_votes[person_id], -self.max_votes, self.max_votes
+#                 )
 
-    def get_person_label(self, person_id):
-        person_votes = self.people_votes[person_id]
-        if abs(person_votes) >= self.min_votes:
-            color = self.color_mask if person_votes > 0 else self.color_no_mask
-            label = "mask" if person_votes > 0 else "no mask"
-        else:
-            color = self.color_unknown
-            label = "not visible"
-        return f"{person_id}|{label}({abs(person_votes)})", color
+#     def get_person_label(self, person_id):
+#         person_votes = self.people_votes[person_id]
+#         if abs(person_votes) >= self.min_votes:
+#             color = self.color_mask if person_votes > 0 else self.color_no_mask
+#             label = "mask" if person_votes > 0 else "no mask"
+#         else:
+#             color = self.color_unknown
+#             label = "not visible"
+#         return f"{person_id}|{label}({abs(person_votes)})", color
 
-    def get_instant_statistics(self, refresh=True):
-        """
-        Get statistics only including people that appeared on camera since last refresh
-        """
-        instant_stats = self.get_statistics(filter_ids=self.current_people)
-        if refresh:
-            with self.stats_lock:
-                self.current_people = set()
-        return instant_stats
+#     def get_instant_statistics(self, refresh=True):
+#         """
+#         Get statistics only including people that appeared on camera since last refresh
+#         """
+#         instant_stats = self.get_statistics(filter_ids=self.current_people)
+#         if refresh:
+#             with self.stats_lock:
+#                 self.current_people = set()
+#         return instant_stats
 
-    def get_statistics(self, filter_ids=None):
-        with self.stats_lock:
-            if filter_ids is not None:
-                filtered_people = {
-                    id: votes for id, votes in self.people_votes.items() if id in filter_ids
-                }
-            else:
-                filtered_people = self.people_votes
-            total_people = len(filtered_people)
-            total_classified = 0
-            total_mask = 0
-            for person_id in filtered_people:
-                person_votes = filtered_people[person_id]
-                if abs(person_votes) >= self.min_votes:
-                    total_classified += 1
-                    if person_votes > 0:
-                        total_mask += 1
-        return total_people, total_classified, total_mask
+#     def get_statistics(self, filter_ids=None):
+#         with self.stats_lock:
+#             if filter_ids is not None:
+#                 filtered_people = {
+#                     id: votes for id, votes in self.people_votes.items() if id in filter_ids
+#                 }
+#             else:
+#                 filtered_people = self.people_votes
+#             total_people = len(filtered_people)
+#             total_classified = 0
+#             total_mask = 0
+#             for person_id in filtered_people:
+#                 person_votes = filtered_people[person_id]
+#                 if abs(person_votes) >= self.min_votes:
+#                     total_classified += 1
+#                     if person_votes > 0:
+#                         total_mask += 1
+#         return total_people, total_classified, total_mask
 
 
 def cb_add_statistics(cb_args):
@@ -292,112 +292,112 @@ def cb_buffer_probe(pad, info, cb_args):
         frame_number = frame_meta.frame_num
         # num_detections = frame_meta.num_obj_meta
         l_obj = frame_meta.obj_meta_list
-        detections = []
-        obj_meta_list = []
-        while l_obj is not None:
-            try:
-                # Casting l_obj.data to pyds.NvDsObjectMeta
-                # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
-                obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-            except StopIteration:
-                break
-            obj_meta_list.append(obj_meta)
-            obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
-            box = obj_meta.rect_params
-            # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
+        # detections = []
+        # obj_meta_list = []
+        # while l_obj is not None:
+        #     try:
+        #         # Casting l_obj.data to pyds.NvDsObjectMeta
+        #         # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
+        #         obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
+        #     except StopIteration:
+        #         break
+        #     obj_meta_list.append(obj_meta)
+        #     obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
+        #     box = obj_meta.rect_params
+        #     # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
 
-            box_points = (
-                (box.left, box.top),
-                (box.left + box.width, box.top + box.height),
-            )
-            box_p = obj_meta.confidence
-            box_label = obj_meta.obj_label
-            if face_processor.validate_detection(box_points, box_p, box_label):
-                det_data = {"label": box_label, "p": box_p}
-                detections.append(
-                    # Noah: Will need to replace eventually
-                    Detection(
-                        np.array(box_points),
-                        data=det_data,
-                    )
-                )
-                # print(f"Added detection: {det_data}")
-            try:
-                l_obj = l_obj.next
-            except StopIteration:
-                break
+        #     box_points = (
+        #         (box.left, box.top),
+        #         (box.left + box.width, box.top + box.height),
+        #     )
+        #     box_p = obj_meta.confidence
+        #     box_label = obj_meta.obj_label
+        #     if face_processor.validate_detection(box_points, box_p, box_label):
+        #         det_data = {"label": box_label, "p": box_p}
+        #         detections.append(
+        #             # Noah: Will need to replace eventually
+        #             Detection(
+        #                 np.array(box_points),
+        #                 data=det_data,
+        #             )
+        #         )
+        #         # print(f"Added detection: {det_data}")
+        #     try:
+        #         l_obj = l_obj.next
+        #     except StopIteration:
+        #         break
 
-        # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
+        # # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
         for obj_meta in obj_meta_list:
             # Remove this to avoid drawing label texts
             pyds.nvds_remove_obj_meta_from_frame(frame_meta, obj_meta)
         obj_meta_list = None
 
         # Each meta object carries max 16 rects/labels/etc.
-        max_drawings_per_meta = 16  # This is hardcoded, not documented
+        # max_drawings_per_meta = 16  # This is hardcoded, not documented
 
-        if face_processor.tracker is not None:
-            # Track, count and draw tracked people
-            tracked_people = face_processor.tracker.update(
-                detections, period=face_processor.tracker_period
-            )
-            # Filter out people with no live points (don't draw)
-            drawn_people = [person for person in tracked_people if person.live_points.any()]
+        # if face_processor.tracker is not None:
+        #     # Track, count and draw tracked people
+        #     tracked_people = face_processor.tracker.update(
+        #         detections, period=face_processor.tracker_period
+        #     )
+        #     # Filter out people with no live points (don't draw)
+        #     drawn_people = [person for person in tracked_people if person.live_points.any()]
 
-            # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
-            if face_processor.draw_tracked_people:
-                for n_person, person in enumerate(drawn_people):
-                    points = person.estimate
-                    box_points = points.clip(0).astype(int)
+        #     # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
+        #     if face_processor.draw_tracked_people:
+        #         for n_person, person in enumerate(drawn_people):
+        #             points = person.estimate
+        #             box_points = points.clip(0).astype(int)
 
-                    # Update mask votes
-                    face_processor.add_detection(
-                        person.id,
-                        person.last_detection.data["label"],
-                        person.last_detection.data["p"],
-                    )
-                    label, color = face_processor.get_person_label(person.id)
+        #             # Update mask votes
+        #             face_processor.add_detection(
+        #                 person.id,
+        #                 person.last_detection.data["label"],
+        #                 person.last_detection.data["p"],
+        #             )
+        #             label, color = face_processor.get_person_label(person.id)
 
-                    # Index of this person's drawing in the current meta
-                    n_draw = n_person % max_drawings_per_meta
+        #             # Index of this person's drawing in the current meta
+        #             n_draw = n_person % max_drawings_per_meta
 
-                    if n_draw == 0:  # Initialize meta
-                        # Acquiring a display meta object. The memory ownership remains in
-                        # the C code so downstream plugins can still access it. Otherwise
-                        # the garbage collector will claim it when this probe function exits.
-                        display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-                        pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        #             if n_draw == 0:  # Initialize meta
+        #                 # Acquiring a display meta object. The memory ownership remains in
+        #                 # the C code so downstream plugins can still access it. Otherwise
+        #                 # the garbage collector will claim it when this probe function exits.
+        #                 display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        #                 pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
 
-                    draw_detection(display_meta, n_draw, box_points, label, color)
+        #             draw_detection(display_meta, n_draw, box_points, label, color)
 
-        # Raw detections
-        # Noah: Might not want to draw anything on raw frames just output JSON.
-        if face_processor.draw_raw_detections:
-            for n_detection, detection in enumerate(detections):
-                points = detection.points
-                box_points = points.clip(0).astype(int)
-                label = detection.data["label"]
-                if label == LABEL_MASK:
-                    color = face_processor.color_mask
-                elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
-                    color = face_processor.color_no_mask
-                else:
-                    color = face_processor.color_unknown
-                label = f"{label} | {detection.data['p']:.2f}"
-                n_draw = n_detection % max_drawings_per_meta
+        # # Raw detections
+        # # Noah: Might not want to draw anything on raw frames just output JSON.
+        # if face_processor.draw_raw_detections:
+        #     for n_detection, detection in enumerate(detections):
+        #         points = detection.points
+        #         box_points = points.clip(0).astype(int)
+        #         label = detection.data["label"]
+        #         if label == LABEL_MASK:
+        #             color = face_processor.color_mask
+        #         elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
+        #             color = face_processor.color_no_mask
+        #         else:
+        #             color = face_processor.color_unknown
+        #         label = f"{label} | {detection.data['p']:.2f}"
+        #         n_draw = n_detection % max_drawings_per_meta
 
-                if n_draw == 0:  # Initialize meta
-                    # Acquiring a display meta object. The memory ownership remains in
-                    # the C code so downstream plugins can still access it. Otherwise
-                    # the garbage collector will claim it when this probe function exits.
-                    display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-                    pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
-                draw_detection(display_meta, n_draw, box_points, label, color)
+        #         if n_draw == 0:  # Initialize meta
+        #             # Acquiring a display meta object. The memory ownership remains in
+        #             # the C code so downstream plugins can still access it. Otherwise
+        #             # the garbage collector will claim it when this probe function exits.
+        #             display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        #             pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        #         draw_detection(display_meta, n_draw, box_points, label, color)
 
-            # Using pyds.get_string() to get display_text as string
-            # print(pyds.get_string(py_nvosd_text_params.display_text))
-            # print(".", end="", flush=True)
-        # print("")
+        #     # Using pyds.get_string() to get display_text as string
+        #     # print(pyds.get_string(py_nvosd_text_params.display_text))
+        #     # print(".", end="", flush=True)
+        # # print("")
         if not frame_number % FRAMES_LOG_INTERVAL:
             print(f"Processed {frame_number} frames...")
 
@@ -580,18 +580,18 @@ def main(
 
     # FaceMask initialization
     # Noah: Variables loaded from config file (like a mini model params)
-    face_tracker_period = skip_inference + 1  # tracker_period=skipped + inference frame(1)
-    face_detection_threshold = float(config["face-processor"]["detection-threshold"])
-    face_voting_threshold = float(config["face-processor"]["voting-threshold"])
-    face_min_face_size = int(config["face-processor"]["min-face-size"])
-    face_disable_tracker = int(config["face-processor"]["disable-tracker"])
-    face_processor = FaceMaskProcessor(
-        th_detection=face_detection_threshold,
-        th_vote=face_voting_threshold,
-        min_face_size=face_min_face_size,
-        tracker_period=face_tracker_period,
-        disable_tracker=face_disable_tracker,
-    )
+    # face_tracker_period = skip_inference + 1  # tracker_period=skipped + inference frame(1)
+    # face_detection_threshold = float(config["face-processor"]["detection-threshold"])
+    # face_voting_threshold = float(config["face-processor"]["voting-threshold"])
+    # face_min_face_size = int(config["face-processor"]["min-face-size"])
+    # face_disable_tracker = int(config["face-processor"]["disable-tracker"])
+    # face_processor = FaceMaskProcessor(
+    #     th_detection=face_detection_threshold,
+    #     th_vote=face_voting_threshold,
+    #     min_face_size=face_min_face_size,
+    #     tracker_period=face_tracker_period,
+    #     disable_tracker=face_disable_tracker,
+    # )
 
     # Standard GStreamer initialization
     Gst.init(None)
@@ -603,7 +603,18 @@ def main(
 
     if not pipeline:
         print("Unable to create Pipeline", error=True)
-
+    use_x264 = False
+    try:
+        encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
+        encoder.set_property("preset-level", 1)
+        encoder.set_property("bufapi-version", 1)
+    except Exception as e:
+        print(
+            "Unable to create nvv4l2h264enc encoder, using x264enc instead",
+            error=False,
+        )
+        use_x264 = True
+    
     if camera_input:
         if usbcam_input:
             input_device = input_filename[len(USBCAM_PROTOCOL) :]
@@ -656,9 +667,9 @@ def main(
 
     # Inference element: object detection using TRT engine
     # Noah: This is building the Gstreamer element that is used during inferencing of network.
-    pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
-    pgie.set_property("config-file-path", CONFIG_FILE)
-    pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
+    # pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
+    # pgie.set_property("config-file-path", CONFIG_FILE)
+    # pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
     convert_pre_osd = make_elm_or_print_err(
@@ -696,9 +707,12 @@ def main(
         rtppay = make_elm_or_print_err("rtpmp4vpay", "rtppay", "RTP MPEG-44 Payload")
     elif codec == CODEC_H264:
         print("Creating H264 stream")
-        encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
-        encoder.set_property("preset-level", 1)
-        encoder.set_property("bufapi-version", 1)
+        if use_x264:
+            encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
+            encoder.set_property("tune", 4)  # zerolatency
+            encoder.set_property("speed-preset", 3)  # veryfast
+
+
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
     else:  # Default: H265 (recommended)
@@ -709,8 +723,11 @@ def main(
         codeparser = make_elm_or_print_err("h265parse", "h265-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph265pay", "rtppay", "RTP H265 Payload")
 
-    encoder.set_property("insert-sps-pps", 1)
-    encoder.set_property("bitrate", output_bitrate)
+    if not use_x264:
+        encoder.set_property("insert-sps-pps", 1)
+        encoder.set_property("bitrate", output_bitrate)
+    else:
+        encoder.set_property("bitrate", output_bitrate // 1000)  # kbit/s
 
 
     # Splitting stream
@@ -750,7 +767,7 @@ def main(
     else:
         pipeline.add(source_bin)
     pipeline.add(streammux)
-    pipeline.add(pgie)
+    #pipeline.add(pgie)
 
     pipeline.add(convert_pre_osd)
     pipeline.add(nvosd)
@@ -789,8 +806,9 @@ def main(
     if not srcpad or not sinkpad:
         print("Unable to get file source or mux sink pads", error=True)
     srcpad.link(sinkpad)
-    streammux.link(pgie)
-    pgie.link(convert_pre_osd)
+    #streammux.link(pgie)
+    #pgie.link(convert_pre_osd)
+    streammux.link(convert_pre_osd)
     convert_pre_osd.link(nvosd)
     nvosd.link(queue)
     queue.link(convert_post_osd)
@@ -824,7 +842,7 @@ def main(
     if not osdsinkpad:
         print("Unable to get sink pad of nvosd", error=True)
 
-    cb_args = (face_processor, e_ready)
+    cb_args = (False, e_ready)
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
 
     # Noah: Starting main Gstreamer process
@@ -857,7 +875,7 @@ def main(
 
         # Timer to add statistics to queue
         if stats_queue is not None:
-            cb_args = stats_period, stats_queue, face_processor
+            cb_args = stats_period, stats_queue, True
             GLib.timeout_add_seconds(stats_period, cb_add_statistics, cb_args)
 
         # Periodic gloop interrupt (see utils.glib_cb_restart)
