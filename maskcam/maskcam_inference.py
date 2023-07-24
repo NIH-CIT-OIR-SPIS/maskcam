@@ -626,7 +626,7 @@ def main(
 
             # Input camera configuration
             # Use ./gst_capabilities.sh to get the list of available capabilities from /dev/video0
-            camera_capabilities = f"video/x-raw, framerate={camera_framerate}/1"
+            camera_capabilities = f"video/x-raw, width={output_width}, height={output_height}, framerate={camera_framerate}/1"
         elif raspicam_input:
             input_device = input_filename[len(RASPICAM_PROTOCOL) :]
             source = make_elm_or_print_err(
@@ -655,12 +655,12 @@ def main(
         source_bin = create_source_bin(0, input_filename)
 
     # Create nvstreammux instance to form batches from one or more sources.
-    streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
-    streammux.set_property("width", output_width) # Noah: This is the width of the output video
-    streammux.set_property("height", output_height) # Noah: This is the height of the output video
-    streammux.set_property("enable-padding", True)  # Keeps aspect ratio, but adds black margin
-    streammux.set_property("batch-size", 1)
-    streammux.set_property("batched-push-timeout", 4000000)
+    # streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
+    # streammux.set_property("width", output_width) # Noah: This is the width of the output video
+    # streammux.set_property("height", output_height) # Noah: This is the height of the output video
+    # streammux.set_property("enable-padding", True)  # Keeps aspect ratio, but adds black margin
+    # streammux.set_property("batch-size", 1)
+    # streammux.set_property("batched-push-timeout", 4000000)
 
     # Adding this element after muxer will cause detections to get delayed
     # videorate = make_elm_or_print_err("videorate", "Vide-rate", "Video Rate")
@@ -766,7 +766,7 @@ def main(
         # pipeline.add(caps_vidconvsrc)
     else:
         pipeline.add(source_bin)
-    pipeline.add(streammux)
+    #pipeline.add(streammux)
     #pipeline.add(pgie)
 
     #pipeline.add(convert_pre_osd)
@@ -813,8 +813,9 @@ def main(
     #queue.link(convert_post_osd)
     #convert_post_osd.link(capsfilter)
     #capsfilter.link(encoder)
-    vidconvsrc.link(streammux)
-    streammux.link(encoder)
+    #vidconvsrc.link(streammux)
+    #streammux.link(encoder)
+    vidconvsrc.link(encoder)
     encoder.link(splitter_file_udp)
 
     # Split stream to file and rtsp
@@ -853,7 +854,7 @@ def main(
 
     # GStreamer message bus
     bus = pipeline.get_bus()
-    
+
     fie = Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL)
 
     # Write to file
