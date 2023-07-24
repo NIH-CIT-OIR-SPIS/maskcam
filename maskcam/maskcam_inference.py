@@ -560,7 +560,7 @@ def main(
     # Original: 1920x1080, bdti_resized: 1024x576, yolo-input: 1024x608
     output_width = int(config["maskcam"]["output-video-width"])
     output_height = int(config["maskcam"]["output-video-height"])
-    output_bitrate = 6000 #6000000  # Nice for h264@1024x576: 4000000
+    output_bitrate = 6000000  # Nice for h264@1024x576: 4000000
 
     # Two types of camera supported: USB or Raspi
     usbcam_input = USBCAM_PROTOCOL in input_filename
@@ -604,6 +604,16 @@ def main(
 
     if not pipeline:
         print("Unable to create Pipeline", error=True)
+    
+    use_h264_enc = False
+    try:
+        encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
+        encoder.set_property("preset-level", 1)
+        encoder.set_property("bufapi-version", 1)
+    except Exception as e:
+        use_h264_enc = True
+        print("Unable to create HW encoder, using x264enc", error=True)
+        pass # Fall back to x264enc
 
     if camera_input:
         if usbcam_input:
@@ -682,12 +692,13 @@ def main(
 
     # Video capabilities: check format and GPU/CPU location
     capsfilter = make_elm_or_print_err("capsfilter", "capsfilter", "capsfilter")
-    if codec == CODEC_MP4:  # Not hw accelerated
+    if use_h264_enc:
+        caps = Gst.Caps.from_string("video/x-raw, format=YUY2")
+    elif codec == CODEC_MP4:  # Not hw accelerated
         caps = Gst.Caps.from_string("video/x-raw, format=I420")
     else:  # hw accelerated
         caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
     capsfilter.set_property("caps", caps)
-    use_h264_enc = False
     # Encoder: H265 has more efficient compression
     # Noah: Make sure if using H265 encoding you are utilizing hardware encoding.
     if codec == CODEC_MP4:
@@ -698,21 +709,13 @@ def main(
     elif codec == CODEC_H264:
         print("Creating H264 stream")
         
-        try:
-            encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
-            encoder.set_property("preset-level", 1)
-            encoder.set_property("bufapi-version", 1)
-        except Exception as e:
-            use_h264_enc = True
-            print("Unable to create HW encoder, using x264enc", error=True)
-            pass # Fall back to x264enc
-        
+
+
         if use_h264_enc:
             encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
             # realt ime
             encoder.set_property("speed-preset", 2)
             print(encoder.get_property("speed-preset"))
-
         
         #encoder.set_property("preset-level", 1)
 
