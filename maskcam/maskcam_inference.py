@@ -646,6 +646,8 @@ def main(
             "caps",
             Gst.Caps.from_string(camera_capabilities),
         )
+        print("caps camera: ", caps_camera.get_property("caps"))
+
         vidconvsrc = make_elm_or_print_err("videoconvert", "convertor_src1", "Convertor src 1")
         caps_vidconvsrc = make_elm_or_print_err(
             "capsfilter", "nvmm_caps", "NVMM caps for input stream"
@@ -798,8 +800,10 @@ def main(
 
     # Print the pipeline structure
     print("Now playing:")
-    print(Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL))
-    
+    # print(Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL))
+    # save dot file: dot -Tpng pipeline.dot > pipeline.png
+    Gst.debug_bin_to_dot_file(pipeline, Gst.DebugGraphDetails.ALL, "../pipeline")
+
     print("Linking elements in the Pipeline \n")
 
     # Pipeline Links
@@ -849,6 +853,7 @@ def main(
     queue_udp.link(rtppay)
     rtppay.link(multiudpsink)
 
+    print("Done linking")
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
     # had got all the metadata.
