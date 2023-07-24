@@ -560,7 +560,7 @@ def main(
     # Original: 1920x1080, bdti_resized: 1024x576, yolo-input: 1024x608
     output_width = int(config["maskcam"]["output-video-width"])
     output_height = int(config["maskcam"]["output-video-height"])
-    output_bitrate = 6000000  # Nice for h264@1024x576: 4000000
+    output_bitrate = 6000 #6000000  # Nice for h264@1024x576: 4000000
 
     # Two types of camera supported: USB or Raspi
     usbcam_input = USBCAM_PROTOCOL in input_filename
@@ -687,7 +687,7 @@ def main(
     else:  # hw accelerated
         caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
     capsfilter.set_property("caps", caps)
-
+    use_h264_enc = False
     # Encoder: H265 has more efficient compression
     # Noah: Make sure if using H265 encoding you are utilizing hardware encoding.
     if codec == CODEC_MP4:
@@ -697,11 +697,25 @@ def main(
         rtppay = make_elm_or_print_err("rtpmp4vpay", "rtppay", "RTP MPEG-44 Payload")
     elif codec == CODEC_H264:
         print("Creating H264 stream")
-        # encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
-        # encoder.set_property("preset-level", 1)
-        # encoder.set_property("bufapi-version", 1)
-        encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
+        
+        try:
+            encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
+            encoder.set_property("preset-level", 1)
+            encoder.set_property("bufapi-version", 1)
+        except Exception as e:
+            use_h264_enc = True
+            print("Unable to create HW encoder, using x264enc", error=True)
+            pass # Fall back to x264enc
+        
+        if use_h264_enc:
+            encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
+            # realt ime
+            encoder.set_property("speed-preset", 2)
+            print(encoder.get_property("speed-preset"))
+
+        
         #encoder.set_property("preset-level", 1)
+
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
     else:  # Default: H265 (recommended)
@@ -713,7 +727,10 @@ def main(
         rtppay = make_elm_or_print_err("rtph265pay", "rtppay", "RTP H265 Payload")
 
     #encoder.set_property("insert-sps-pps", 1)
-    encoder.set_property("bitrate", output_bitrate)
+    if use_h264_enc:
+        encoder.set_property("bitrate", output_bitrate // 1000)
+    else:    
+        encoder.set_property("bitrate", output_bitrate)
 
 
     # Splitting stream
