@@ -616,8 +616,7 @@ def main(
 
             # Input camera configuration
             # Use ./gst_capabilities.sh to get the list of available capabilities from /dev/video0
-            camera_capabilities = f"video/x-raw, width={output_width}, height={output_height}, framerate={camera_framerate}/1"
-        
+            camera_capabilities = f"video/x-raw, framerate={camera_framerate}/1"
         elif raspicam_input:
             input_device = input_filename[len(RASPICAM_PROTOCOL) :]
             source = make_elm_or_print_err(
@@ -630,7 +629,7 @@ def main(
             
             nvvidconvsrc = make_elm_or_print_err("nvvidconv", "convertor_flip", "Convertor flip")
             nvvidconvsrc.set_property("flip-method", camera_flip_method)
-            camera_capabilities = f"video/x-raw(memory:NVMM), width={output_width}, height={output_height}, framerate={camera_framerate}/1"
+            camera_capabilities = f"video/x-raw(memory:NVMM),framerate={camera_framerate}/1"
 
         # Misterious converting sequence from deepstream_test_1_usb.py
         caps_camera = make_elm_or_print_err("capsfilter", "camera_src_caps", "Camera caps filter")
@@ -647,12 +646,12 @@ def main(
         source_bin = create_source_bin(0, input_filename)
 
     # Create nvstreammux instance to form batches from one or more sources.
-    # streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
-    # streammux.set_property("width", output_width) # Noah: This is the width of the output video
-    # streammux.set_property("height", output_height) # Noah: This is the height of the output video
-    # streammux.set_property("enable-padding", True)  # Keeps aspect ratio, but adds black margin
-    # streammux.set_property("batch-size", 1)
-    # streammux.set_property("batched-push-timeout", 4000000)
+    streammux = make_elm_or_print_err("nvstreammux", "Stream-muxer", "NvStreamMux")
+    streammux.set_property("width", output_width) # Noah: This is the width of the output video
+    streammux.set_property("height", output_height) # Noah: This is the height of the output video
+    streammux.set_property("enable-padding", True)  # Keeps aspect ratio, but adds black margin
+    streammux.set_property("batch-size", 1)
+    streammux.set_property("batched-push-timeout", 4000000)
 
     # Adding this element after muxer will cause detections to get delayed
     # videorate = make_elm_or_print_err("videorate", "Vide-rate", "Video Rate")
@@ -773,7 +772,7 @@ def main(
         pipeline.add(caps_vidconvsrc)
     else:
         pipeline.add(source_bin)
-    #ipeline.add(streammux)
+    pipeline.add(streammux)
     # pipeline.add(pgie)
 
     # pipeline.add(convert_pre_osd)
@@ -809,10 +808,10 @@ def main(
         srcpad = caps_vidconvsrc.get_static_pad("src")
     else:
         srcpad = source_bin.get_static_pad("src")
-    #sinkpad = streammux.get_request_pad("sink_0")
-    # if not srcpad or not sinkpad:
-    #     print("Unable to get file source or mux sink pads", error=True)
-    #srcpad.link(sinkpad)
+    sinkpad = streammux.get_request_pad("sink_0")
+    if not srcpad or not sinkpad:
+        print("Unable to get file source or mux sink pads", error=True)
+    srcpad.link(sinkpad)
     # streammux.link(pgie)
     # pgie.link(convert_pre_osd)
     # convert_pre_osd.link(nvosd)
@@ -820,8 +819,7 @@ def main(
     # queue.link(convert_post_osd)
     # convert_post_osd.link(capsfilter)
     # capsfilter.link(encoder)
-    
-    caps_vidconvsrc.link(encoder)
+    streammux.link(encoder)
     encoder.link(splitter_file_udp)
 
     # Split stream to file and rtsp
@@ -956,24 +954,24 @@ def main(
         pipeline.set_state(Gst.State.NULL)
 
 
-if __name__ == "__main__":
-    print_config_overrides()
-    # Check input arguments
-    output_filename = None
-    if len(sys.argv) > 1:
-        input_filename = sys.argv[1]
-        print(f"Provided input source: {input_filename}")
-        if len(sys.argv) > 2:
-            output_filename = sys.argv[2]
-            print(f"Save output file: [green]{output_filename}[/green]")
-    else:
-        input_filename = config["maskcam"]["default-input"]
-        print(f"Using input from config file: {input_filename}")
+# if __name__ == "__main__":
+#     print_config_overrides()
+#     # Check input arguments
+#     output_filename = None
+#     if len(sys.argv) > 1:
+#         input_filename = sys.argv[1]
+#         print(f"Provided input source: {input_filename}")
+#         if len(sys.argv) > 2:
+#             output_filename = sys.argv[2]
+#             print(f"Save output file: [green]{output_filename}[/green]")
+#     else:
+#         input_filename = config["maskcam"]["default-input"]
+#         print(f"Using input from config file: {input_filename}")
 
-    sys.exit(
-        main(
-            config=config,
-            input_filename=input_filename,
-            output_filename=output_filename,
-        )
-    )
+#     sys.exit(
+#         main(
+#             config=config,
+#             input_filename=input_filename,
+#             output_filename=output_filename,
+#         )
+#     )
