@@ -28,11 +28,11 @@ import json
 import shutil
 import signal
 
-import multiprocessing as mp
+
 
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
-mp.set_start_method("spawn")  # noqa
-import threading
+#  # noqa
+
 from rich.console import Console
 from datetime import datetime, timedelta
 
@@ -74,6 +74,9 @@ from maskcam.maskcam_filesave import main as filesave_main
 from maskcam.maskcam_fileserver import main as fileserver_main
 from maskcam.maskcam_streaming import main as streaming_main
 
+import threading
+import multiprocessing as mp
+mp.set_start_method("spawn")
 
 udp_ports_pool = set()
 console = Console()
@@ -102,6 +105,8 @@ def start_process(name, target_function, config, **kwargs):
     Start a new process with a target function and a config dict.
     returns the process and an event to interrupt it.
     """
+    # print start method for mp
+    print(f"Start method: {mp.get_start_method()}")
     e_interrupt_process = mp.Event()
     process = mp.Process(
         name=name,
@@ -500,96 +505,96 @@ if __name__ == "__main__":
 
         # Inference process: If input is a file, also saves file
         # Noah: Inference is first process to start as it reads in data from the camera and then does the inference other processes happen afterwards
-        # output_filename = None if is_live_input else f"output_{input_filename.split('/')[-1]}"
-        # process_inference, e_interrupt_inference = start_process(
-        #     P_INFERENCE,
-        #     inference_main,
-        #     config,
-        #     input_filename=input_filename,
-        #     output_filename=output_filename,
-        #     stats_queue=stats_queue,
-        #     e_ready=e_inference_ready,
-        # )
+        output_filename = None if is_live_input else f"output_{input_filename.split('/')[-1]}"
+        process_inference, e_interrupt_inference = start_process(
+            P_INFERENCE,
+            inference_main,
+            config,
+            input_filename=input_filename,
+            output_filename=output_filename,
+            stats_queue=stats_queue,
+            e_ready=e_inference_ready,
+        )
 
-        # while not e_interrupt.is_set():
-        #     # Send MQTT statistics, detect alarm events and request file-saving
-        #     handle_statistics(mqtt_client, stats_queue, config, is_live_input)
+        while not e_interrupt.is_set():
+            # Send MQTT statistics, detect alarm events and request file-saving
+            handle_statistics(mqtt_client, stats_queue, config, is_live_input)
 
-        #     # Handle sequential file saving processes, only after inference process is ready
-        #     if e_inference_ready.is_set():
-        #         if fileserver_enabled and is_live_input:  # server can be enabled via MQTT
-        #             handle_file_saving(
-        #                 fileserver_period,
-        #                 fileserver_duration,
-        #                 fileserver_ram_dir,
-        #                 fileserver_hdd_dir,
-        #                 fileserver_force_save,
-        #                 mqtt_client=mqtt_client,
-        #             )
+            # Handle sequential file saving processes, only after inference process is ready
+            if e_inference_ready.is_set():
+                if fileserver_enabled and is_live_input:  # server can be enabled via MQTT
+                    handle_file_saving(
+                        fileserver_period,
+                        fileserver_duration,
+                        fileserver_ram_dir,
+                        fileserver_hdd_dir,
+                        fileserver_force_save,
+                        mqtt_client=mqtt_client,
+                    )
 
-        #     if not q_commands.empty():
-        #         command = q_commands.get_nowait()
-        #         reply_updated_status = False
-        #         print(f"Processing command: [yellow]{command}[yellow]")
-        #         if command == CMD_STREAMING_START:
-        #             if process_streaming is None or not process_streaming.is_alive():
-        #                 process_streaming, e_interrupt_streaming = start_process(
-        #                     P_STREAMING, streaming_main, config
-        #                 )
-        #             reply_updated_status = True
-        #         elif command == CMD_STREAMING_STOP:
-        #             if process_streaming is not None and process_streaming.is_alive():
-        #                 terminate_process(P_STREAMING, process_streaming, e_interrupt_streaming)
-        #             reply_updated_status = True
-        #         elif command == CMD_INFERENCE_RESTART:
-        #             if process_inference.is_alive():
-        #                 terminate_process(P_INFERENCE, process_inference, e_interrupt_inference)
-        #             process_inference, e_interrupt_inference = start_process(
-        #                 P_INFERENCE,
-        #                 inference_main,
-        #                 config,
-        #                 input_filename=input_filename,
-        #                 output_filename=output_filename,
-        #                 stats_queue=stats_queue,
-        #             )
-        #             reply_updated_status = True
-        #         elif command == CMD_FILESERVER_RESTART:
-        #             if process_fileserver is not None and process_fileserver.is_alive():
-        #                 terminate_process(P_FILESERVER, process_fileserver, e_interrupt_fileserver)
-        #             process_fileserver, e_interrupt_fileserver = start_process(
-        #                 P_FILESERVER,
-        #                 fileserver_main,
-        #                 config,
-        #                 directory=fileserver_hdd_dir,
-        #             )
-        #             fileserver_enabled = True
-        #             reply_updated_status = True
-        #         elif command == CMD_FILE_SAVE:
-        #             flag_keep_current_files()
-        #             reply_updated_status = True
-        #         elif command == CMD_STATUS_REQUEST:
-        #             reply_updated_status = True
-        #         else:
-        #             print("[red]Command not recognized[/red]", error=True)
+            if not q_commands.empty():
+                command = q_commands.get_nowait()
+                reply_updated_status = False
+                print(f"Processing command: [yellow]{command}[yellow]")
+                if command == CMD_STREAMING_START:
+                    if process_streaming is None or not process_streaming.is_alive():
+                        process_streaming, e_interrupt_streaming = start_process(
+                            P_STREAMING, streaming_main, config
+                        )
+                    reply_updated_status = True
+                elif command == CMD_STREAMING_STOP:
+                    if process_streaming is not None and process_streaming.is_alive():
+                        terminate_process(P_STREAMING, process_streaming, e_interrupt_streaming)
+                    reply_updated_status = True
+                elif command == CMD_INFERENCE_RESTART:
+                    if process_inference.is_alive():
+                        terminate_process(P_INFERENCE, process_inference, e_interrupt_inference)
+                    process_inference, e_interrupt_inference = start_process(
+                        P_INFERENCE,
+                        inference_main,
+                        config,
+                        input_filename=input_filename,
+                        output_filename=output_filename,
+                        stats_queue=stats_queue,
+                    )
+                    reply_updated_status = True
+                elif command == CMD_FILESERVER_RESTART:
+                    if process_fileserver is not None and process_fileserver.is_alive():
+                        terminate_process(P_FILESERVER, process_fileserver, e_interrupt_fileserver)
+                    process_fileserver, e_interrupt_fileserver = start_process(
+                        P_FILESERVER,
+                        fileserver_main,
+                        config,
+                        directory=fileserver_hdd_dir,
+                    )
+                    fileserver_enabled = True
+                    reply_updated_status = True
+                elif command == CMD_FILE_SAVE:
+                    flag_keep_current_files()
+                    reply_updated_status = True
+                elif command == CMD_STATUS_REQUEST:
+                    reply_updated_status = True
+                else:
+                    print("[red]Command not recognized[/red]", error=True)
 
-        #         if reply_updated_status:
-        #             mqtt_send_device_status(mqtt_client)
-        #     else:
-        #         e_interrupt.wait(timeout=0.1)
+                if reply_updated_status:
+                    mqtt_send_device_status(mqtt_client)
+            else:
+                e_interrupt.wait(timeout=0.1)
 
-        #     # Routine check: finish loop if the inference process is dead
-        #     if not process_inference.is_alive():
-        #         e_interrupt.set()
+            # Routine check: finish loop if the inference process is dead
+            if not process_inference.is_alive():
+                e_interrupt.set()
 
-        #     # Routine check: restart inference at given interval (only live_input)
-        #     if tout_inference_restart:
-        #         inference_runtime = datetime.now() - processes_info[P_INFERENCE]["started"]
-        #         if inference_runtime > tout_inference_restart:
-        #             print(
-        #                 "[yellow]Restarting inference due to timeout-inference-restart"
-        #                 f"(inference runtime: {format_tdelta(inference_runtime)})[/yellow]"
-        #             )
-        #             new_command(CMD_INFERENCE_RESTART)
+            # Routine check: restart inference at given interval (only live_input)
+            if tout_inference_restart:
+                inference_runtime = datetime.now() - processes_info[P_INFERENCE]["started"]
+                if inference_runtime > tout_inference_restart:
+                    print(
+                        "[yellow]Restarting inference due to timeout-inference-restart"
+                        f"(inference runtime: {format_tdelta(inference_runtime)})[/yellow]"
+                    )
+                    new_command(CMD_INFERENCE_RESTART)
 
     except:  # noqa
         console.print_exception()
