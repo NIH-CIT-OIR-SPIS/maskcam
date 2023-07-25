@@ -595,7 +595,7 @@ def main(
 
     # Standard GStreamer initialization
     Gst.init(None)
-
+ #
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
     print("Creating Pipeline \n ")
