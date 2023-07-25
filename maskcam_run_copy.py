@@ -27,7 +27,7 @@ import sys
 import json
 import shutil
 import signal
-
+import threading
 
 
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
@@ -74,9 +74,7 @@ from maskcam.maskcam_filesave import main as filesave_main
 from maskcam.maskcam_fileserver import main as fileserver_main
 from maskcam.maskcam_streaming import main as streaming_main
 
-import threading
-import multiprocessing as mp
-mp.set_start_method("spawn")
+from maskcam.common import multiproc as mp
 
 udp_ports_pool = set()
 console = Console()
