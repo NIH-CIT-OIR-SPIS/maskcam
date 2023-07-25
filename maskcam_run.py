@@ -31,7 +31,7 @@ import signal
 import multiprocessing as mp
 
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
-mp.set_start_method("spawn")  # noqa
+#mp.set_start_method("spawn")  # noqa
 import threading
 from rich.console import Console
 from datetime import datetime, timedelta
@@ -102,6 +102,8 @@ def start_process(name, target_function, config, **kwargs):
     Start a new process with a target function and a config dict.
     returns the process and an event to interrupt it.
     """
+    # print start method for mp
+    print(f"Start method: {mp.get_start_method()}")
     e_interrupt_process = mp.Event()
     process = mp.Process(
         name=name,
