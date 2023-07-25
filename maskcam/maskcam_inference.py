@@ -773,7 +773,7 @@ def main(
         pipeline.add(caps_vidconvsrc)
     else:
         pipeline.add(source_bin)
-    pipeline.add(streammux)
+    #ipeline.add(streammux)
     # pipeline.add(pgie)
 
     # pipeline.add(convert_pre_osd)
