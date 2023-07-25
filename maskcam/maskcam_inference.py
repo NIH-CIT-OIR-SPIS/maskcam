@@ -623,7 +623,7 @@ def main(
                 "nvarguscamerasrc", "nv-argus-camera-source", "RaspiCam input"
             )
             source.set_property("sensor-id", int(input_device))
-            source.set_property("bufapi-version", 1)
+            #source.set_property("bufapi-version", 1)
 
             # Special camera_capabilities for raspicam
             camera_capabilities = f"video/x-raw(memory:NVMM),framerate={camera_framerate}/1"
