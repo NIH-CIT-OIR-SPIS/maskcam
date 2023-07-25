@@ -855,6 +855,14 @@ def main(
     # GStreamer message bus
     bus = pipeline.get_bus()
 
+    fie = Gst.debug_bin_to_dot_data(pipeline, Gst.DebugGraphDetails.ALL)
+
+    # Write to file
+
+    with open("pipeline_softencTest.dot", "w") as f:
+        f.write(fie)
+    # To convert to png: dot -Tpng pipeline_softencTest.dot > pipeline_softencTest.png
+    
     # Noah: Checking flag e_external_interrupt
     if e_external_interrupt is None:
         # Use threading instead of mp.Event() for sigint_handler, see:
