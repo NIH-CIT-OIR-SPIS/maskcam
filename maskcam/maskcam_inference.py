@@ -716,9 +716,12 @@ def main(
         encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
         encoder.set_property("tune", 4)  # 4: zerolatency
         encoder.set_property("speed-preset", 3)  # 3: veryfast
-        encoder.set_property("bitrate", output_bitrate // 1000)  # kbps
+
         # Possibly want maybe not
         encoder.set_property("byte-stream", True)
+        codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
+        rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
+        encoder.set_property("bitrate", output_bitrate // 1000)  # kbps
 
     else:  # Default: H265
         print("Creating H265 stream")
@@ -862,7 +865,7 @@ def main(
     with open("pipeline_softencTest.dot", "w") as f:
         f.write(fie)
     # To convert to png: dot -Tpng pipeline_softencTest.dot > pipeline_softencTest.png
-    
+
     # Noah: Checking flag e_external_interrupt
     if e_external_interrupt is None:
         # Use threading instead of mp.Event() for sigint_handler, see:
