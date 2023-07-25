@@ -90,11 +90,11 @@ def main(config, directory=None, e_external_interrupt: mp.Event = None):
     print(f"Server alive threads: {threading.enumerate()}")
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # Print any ENV var config override to avoid confusions
-    print_config_overrides()
+#     # Print any ENV var config override to avoid confusions
+#     print_config_overrides()
 
-    # Input source
-    directory = sys.argv[1] if len(sys.argv) > 1 else None
-    main(config, directory=directory)
+#     # Input source
+#     directory = sys.argv[1] if len(sys.argv) > 1 else None
+#     main(config, directory=directory)

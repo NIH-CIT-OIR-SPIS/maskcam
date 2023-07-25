@@ -202,23 +202,23 @@ def main(
     pipeline.set_state(Gst.State.NULL)
 
 
-if __name__ == "__main__":
-    # Print any ENV var config override to avoid confusions
-    print_config_overrides()
+# if __name__ == "__main__":
+#     # Print any ENV var config override to avoid confusions
+#     print_config_overrides()
 
-    # Check arguments
-    output_filename = None
-    udp_port = None
-    if len(sys.argv) > 1:
-        output_filename = sys.argv[1]
-    if len(sys.argv) > 2:
-        udp_port = int(sys.argv[2])
+#     # Check arguments
+#     output_filename = None
+#     udp_port = None
+#     if len(sys.argv) > 1:
+#         output_filename = sys.argv[1]
+#     if len(sys.argv) > 2:
+#         udp_port = int(sys.argv[2])
 
-    if not output_filename:
-        output_dir = config["maskcam"]["fileserver-hdd-dir"]
-        output_filename = f"{output_dir}/{datetime.today().strftime('%Y%m%d_%H%M%S')}.mp4"
-    if not udp_port:  # Use first listed in config
-        udp_port = int(config["maskcam"]["udp-ports-filesave"].split(",")[0])
-    print(f"Output file: {output_filename}")
+#     if not output_filename:
+#         output_dir = config["maskcam"]["fileserver-hdd-dir"]
+#         output_filename = f"{output_dir}/{datetime.today().strftime('%Y%m%d_%H%M%S')}.mp4"
+#     if not udp_port:  # Use first listed in config
+#         udp_port = int(config["maskcam"]["udp-ports-filesave"].split(",")[0])
+#     print(f"Output file: {output_filename}")
 
-    sys.exit(main(config=config, output_filename=output_filename, udp_port=udp_port))
+#     sys.exit(main(config=config, output_filename=output_filename, udp_port=udp_port))

@@ -113,8 +113,8 @@ def main(config, e_external_interrupt: mp.Event = None):
     print("Ending streaming")
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # Print any config override by env variables to avoid confusions
-    print_config_overrides()
-    main(config)
+#     # Print any config override by env variables to avoid confusions
+#     print_config_overrides()
+#     main(config)

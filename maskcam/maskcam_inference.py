@@ -953,24 +953,24 @@ def main(
         pipeline.set_state(Gst.State.NULL)
 
 
-if __name__ == "__main__":
-    print_config_overrides()
-    # Check input arguments
-    output_filename = None
-    if len(sys.argv) > 1:
-        input_filename = sys.argv[1]
-        print(f"Provided input source: {input_filename}")
-        if len(sys.argv) > 2:
-            output_filename = sys.argv[2]
-            print(f"Save output file: [green]{output_filename}[/green]")
-    else:
-        input_filename = config["maskcam"]["default-input"]
-        print(f"Using input from config file: {input_filename}")
+# if __name__ == "__main__":
+#     print_config_overrides()
+#     # Check input arguments
+#     output_filename = None
+#     if len(sys.argv) > 1:
+#         input_filename = sys.argv[1]
+#         print(f"Provided input source: {input_filename}")
+#         if len(sys.argv) > 2:
+#             output_filename = sys.argv[2]
+#             print(f"Save output file: [green]{output_filename}[/green]")
+#     else:
+#         input_filename = config["maskcam"]["default-input"]
+#         print(f"Using input from config file: {input_filename}")
 
-    sys.exit(
-        main(
-            config=config,
-            input_filename=input_filename,
-            output_filename=output_filename,
-        )
-    )
+#     sys.exit(
+#         main(
+#             config=config,
+#             input_filename=input_filename,
+#             output_filename=output_filename,
+#         )
+#     )
