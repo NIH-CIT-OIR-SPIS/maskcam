@@ -28,7 +28,7 @@ import json
 import shutil
 import signal
 import threading
-
+from maskcam.common import multiproc as mp
 
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
 #  # noqa
@@ -74,7 +74,7 @@ from maskcam.maskcam_filesave import main as filesave_main
 from maskcam.maskcam_fileserver import main as fileserver_main
 from maskcam.maskcam_streaming import main as streaming_main
 
-from maskcam.common import multiproc as mp
+
 
 udp_ports_pool = set()
 console = Console()

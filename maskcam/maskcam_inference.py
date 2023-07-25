@@ -626,9 +626,10 @@ def main(
             #source.set_property("bufapi-version", 1)
 
             # Special camera_capabilities for raspicam
-            camera_capabilities = f"video/x-raw(memory:NVMM),framerate={camera_framerate}/1"
+            
             nvvidconvsrc = make_elm_or_print_err("nvvidconv", "convertor_flip", "Convertor flip")
             nvvidconvsrc.set_property("flip-method", camera_flip_method)
+            camera_capabilities = f"video/x-raw(memory:NVMM),framerate={camera_framerate}/1"
 
         # Misterious converting sequence from deepstream_test_1_usb.py
         caps_camera = make_elm_or_print_err("capsfilter", "camera_src_caps", "Camera caps filter")
@@ -678,7 +679,7 @@ def main(
     # nvosd.set_property("display-text", True)  # Needed for any text
 
     # # Finally encode and save the osd output
-    # queue = make_elm_or_print_err("queue", "queue", "Queue")
+    queue = make_elm_or_print_err("queue", "queue", "Queue")
     # convert_post_osd = make_elm_or_print_err(
     #     "nvvideoconvert", "convert_post_osd", "Converter RGBA->NV12"
     # )
@@ -776,7 +777,7 @@ def main(
 
     # pipeline.add(convert_pre_osd)
     # pipeline.add(nvosd)
-    # pipeline.add(queue)
+    pipeline.add(queue)
     # pipeline.add(convert_post_osd)
     # pipeline.add(capsfilter)
     pipeline.add(encoder)
@@ -818,7 +819,8 @@ def main(
     # queue.link(convert_post_osd)
     # convert_post_osd.link(capsfilter)
     # capsfilter.link(encoder)
-    streammux.link(encoder)
+    streammux.link(queue)
+    queue.link(encoder)
     encoder.link(splitter_file_udp)
 
     # Split stream to file and rtsp
@@ -953,24 +955,24 @@ def main(
         pipeline.set_state(Gst.State.NULL)
 
 
-# if __name__ == "__main__":
-#     print_config_overrides()
-#     # Check input arguments
-#     output_filename = None
-#     if len(sys.argv) > 1:
-#         input_filename = sys.argv[1]
-#         print(f"Provided input source: {input_filename}")
-#         if len(sys.argv) > 2:
-#             output_filename = sys.argv[2]
-#             print(f"Save output file: [green]{output_filename}[/green]")
-#     else:
-#         input_filename = config["maskcam"]["default-input"]
-#         print(f"Using input from config file: {input_filename}")
+if __name__ == "__main__":
+    print_config_overrides()
+    # Check input arguments
+    output_filename = None
+    if len(sys.argv) > 1:
+        input_filename = sys.argv[1]
+        print(f"Provided input source: {input_filename}")
+        if len(sys.argv) > 2:
+            output_filename = sys.argv[2]
+            print(f"Save output file: [green]{output_filename}[/green]")
+    else:
+        input_filename = config["maskcam"]["default-input"]
+        print(f"Using input from config file: {input_filename}")
 
-#     sys.exit(
-#         main(
-#             config=config,
-#             input_filename=input_filename,
-#             output_filename=output_filename,
-#         )
-#     )
+    sys.exit(
+        main(
+            config=config,
+            input_filename=input_filename,
+            output_filename=output_filename,
+        )
+    )

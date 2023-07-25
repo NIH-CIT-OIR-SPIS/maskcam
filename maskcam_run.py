@@ -27,12 +27,12 @@ import sys
 import json
 import shutil
 import signal
-
-import multiprocessing as mp
+import threading
+from maskcam.common import multiproc as mp
 
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
-#mp.set_start_method("spawn")  # noqa
-import threading
+#  # noqa
+
 from rich.console import Console
 from datetime import datetime, timedelta
 
@@ -73,6 +73,7 @@ from maskcam.maskcam_inference import main as inference_main
 from maskcam.maskcam_filesave import main as filesave_main
 from maskcam.maskcam_fileserver import main as fileserver_main
 from maskcam.maskcam_streaming import main as streaming_main
+
 
 
 udp_ports_pool = set()
