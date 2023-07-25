@@ -821,7 +821,7 @@ def main(
     # convert_post_osd.link(capsfilter)
     # capsfilter.link(encoder)
     
-    srcpad.link(encoder)
+    caps_vidconvsrc.link(encoder)
     encoder.link(splitter_file_udp)
 
     # Split stream to file and rtsp
