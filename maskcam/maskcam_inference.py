@@ -917,8 +917,6 @@ def main(
                         print(f"{err}: {debug}", error=True)
                         show_troubleshooting()
                         running = False
-                else:
-                    print("Running currently...\n")
             except Exception as egt:
                 print(f"ttt {egt}: {debug}", warning=True)
                 print("Exception")

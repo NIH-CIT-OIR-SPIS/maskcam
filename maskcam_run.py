@@ -129,6 +129,8 @@ def terminate_process(name, process, e_interrupt_process, delete_info=False):
     print(f"Sending interrupt to {name} process")
     e_interrupt_process.set()
     print(f"Waiting for process [yellow]{name}[/yellow] to terminate...")
+    # if name == "inference":
+    #     print("Where")
     process.join(timeout=10)
     if process.is_alive():
         print(
@@ -545,6 +547,7 @@ if __name__ == "__main__":
                         terminate_process(P_STREAMING, process_streaming, e_interrupt_streaming)
                     reply_updated_status = True
                 elif command == CMD_INFERENCE_RESTART:
+                    
                     if process_inference.is_alive():
                         terminate_process(P_INFERENCE, process_inference, e_interrupt_inference)
                     process_inference, e_interrupt_inference = start_process(
@@ -611,15 +614,18 @@ if __name__ == "__main__":
     try:
         if process_inference is not None and process_inference.is_alive():
             terminate_process(P_INFERENCE, process_inference, e_interrupt_inference)
+            print("Inference process terminated a")
     except:  # noqa
         console.print_exception()
     try:
         if process_fileserver is not None and process_fileserver.is_alive():
             terminate_process(P_FILESERVER, process_fileserver, e_interrupt_fileserver)
+            
     except:  # noqa
         console.print_exception()
     try:
         if process_streaming is not None and process_streaming.is_alive():
             terminate_process(P_STREAMING, process_streaming, e_interrupt_streaming)
+            
     except:  # noqa
         console.print_exception()
