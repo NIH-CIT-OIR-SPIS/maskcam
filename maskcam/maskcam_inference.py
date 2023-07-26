@@ -900,22 +900,30 @@ def main(
         # Custom event loop
         running = True
         while running:
-            g_context.iteration(may_block=True)
-            message = bus.pop()
-            if message is not None:
-                t = message.type
+            try: 
+                g_context.iteration(may_block=True)
+                message = bus.pop()
+                if message is not None:
+                    t = message.type
 
-                if t == Gst.MessageType.EOS:
-                    print("End-of-stream\n")
-                    running = False
-                elif t == Gst.MessageType.WARNING:
-                    err, debug = message.parse_warning()
-                    print(f"{err}: {debug}", warning=True)
-                elif t == Gst.MessageType.ERROR:
-                    err, debug = message.parse_error()
-                    print(f"{err}: {debug}", error=True)
-                    show_troubleshooting()
-                    running = False
+                    if t == Gst.MessageType.EOS:
+                        print("End-of-stream\n")
+                        running = False
+                    elif t == Gst.MessageType.WARNING:
+                        err, debug = message.parse_warning()
+                        print(f"{err}: {debug}", warning=True)
+                    elif t == Gst.MessageType.ERROR:
+                        err, debug = message.parse_error()
+                        print(f"{err}: {debug}", error=True)
+                        show_troubleshooting()
+                        running = False
+                else:
+                    print("Running currently...\n")
+            except Exception as egt:
+                print(f"ttt {egt}: {debug}", warning=True)
+                print("Exception")
+                running = False
+
             if e_interrupt.is_set():
                 # Send EOS to container to generate a valid mp4 file
                 # Noah: EOS (End of Stream)
