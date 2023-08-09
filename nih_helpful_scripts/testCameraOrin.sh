@@ -1,0 +1,2 @@
+#!/bin/bash
+gst-launch-1.0 nvarguscamerasrc sensor-id=0 ! "video/x-raw(memory:NVMM),width=1280,height=720,framerate=60/1,format=NV12" ! nvvidconv ! x264enc speed-preset=veryfast ! queue ! h264parse ! mp4mux ! filesink location=xyz.mp4 -e
