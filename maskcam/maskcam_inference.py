@@ -35,7 +35,8 @@ import signal
 import platform
 import threading
 import numpy as np
-from .common import multiproc as mp
+import multiprocessing as mp
+#from .common import multiproc as mp
 from rich.console import Console
 from datetime import datetime, timezone
 

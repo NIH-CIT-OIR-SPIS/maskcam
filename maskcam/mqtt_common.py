@@ -22,7 +22,8 @@
 
 import os
 import json
-from .common import multiproc as mp
+import multiprocessing as mp
+#from .common import multiproc as mp
 from typing import Callable, List
 from paho.mqtt import client as paho_mqtt_client
 

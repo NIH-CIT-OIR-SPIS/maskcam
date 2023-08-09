@@ -22,14 +22,18 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+from maskcam.comother import (
+    TEST_T
+)
 import os
 import sys
 import json
 import shutil
 import signal
 import threading
-from maskcam.common import multiproc as mp
+import multiprocessing as mp
 
+print(f"A: Current multiprocessing start method: {mp.get_start_method()}")
 # Avoids random hangs in child processes (https://pythonspeed.com/articles/python-multiprocessing/)
 #mp.set_start_method("spawn")  # noqa
 

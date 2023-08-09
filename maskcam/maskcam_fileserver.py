@@ -28,7 +28,8 @@ import sys
 import time
 import socket
 import threading
-from .common import multiproc as mp
+#from .common import multiproc as mp
+import multiprocessing as mp
 from datetime import datetime
 from http.server import SimpleHTTPRequestHandler
 from socketserver import TCPServer, ThreadingTCPServer

@@ -20,31 +20,14 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
-# import multiprocessing as multiproc
+import multiprocessing as multiproc
 
-# try:
-#     multiproc.set_start_method("spawn")
-#     print("Succesfully set multiprocessing start method to {}".format(multiproc.get_start_method()))
-# except Exception as errMsg:
-#     print(f"Error setting multiprocessing start method: {errMsg}")
-#     # Current start method is:
-#     print(f"Current multiprocessing start method: {multiproc.get_start_method()}")
+try:
+    multiproc.set_start_method("spawn")
+    print("Succesfully set multiprocessing start method to {}".format(multiproc.get_start_method()))
+except Exception as errMsg:
+    print(f"Error setting multiprocessing start method: {errMsg}")
+    # Current start method is:
+    print(f"Current multiprocessing start method: {multiproc.get_start_method()}")
 
-
-
-
-CODEC_MP4 = "MP4"
-CODEC_H265 = "H265"
-CODEC_H264 = "H264"
-CODEC_X264 = "X264"
-USBCAM_PROTOCOL = "v4l2://"  # Invented by us since there's no URI for this
-RASPICAM_PROTOCOL = "argus://"  # Invented by us since there's no URI for this
-CONFIG_FILE = "maskcam_config.txt"  # Also used in nvinfer element
-
-# Available commands (to send internally, between processes or via MQTT)
-CMD_FILE_SAVE = "save_file"
-CMD_STREAMING_START = "streaming_start"
-CMD_STREAMING_STOP = "streaming_stop"
-CMD_INFERENCE_RESTART = "inference_restart"
-CMD_FILESERVER_RESTART = "fileserver_restart"
-CMD_STATUS_REQUEST = "status_request"
+TEST_T = "test_t"
