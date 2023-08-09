@@ -26,8 +26,11 @@ try:
     multiproc.set_start_method("spawn")
     print("Succesfully set multiprocessing start method to {}".format(multiproc.get_start_method()))
 except Exception as errMsg:
-    print(f"Error setting multiprocessing start method: {errMsg}")
+    print(f"T Error setting multiprocessing start method: {errMsg}")
     # Current start method is:
-    print(f"Current multiprocessing start method: {multiproc.get_start_method()}")
+    print(f"R e Current multiprocessing start method: {multiproc.get_start_method()}")
+    # Print process ID
+    print(f"R e Process ID: {multiproc.current_process().pid}")
+    
 
 TEST_T = "test_t"

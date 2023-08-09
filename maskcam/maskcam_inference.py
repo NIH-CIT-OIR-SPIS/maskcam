@@ -421,7 +421,9 @@ def draw_detection(display_meta, n_draw, box_points, detection_label, color):
 
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
-    frame_number=0
+    global frame_number
+    global start_time
+
     #Intiallizing object counter with 0.
     obj_counter = {
         PGIE_CLASS_ID_VEHICLE:0,
@@ -470,38 +472,47 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
         # the garbage collector will claim it when this probe function exits.
-        display_meta=pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-        display_meta.num_labels = 1
-        py_nvosd_text_params = display_meta.text_params[0]
-        # Setting display text to be shown on screen
-        # Note that the pyds module allocates a buffer for the string, and the
-        # memory will not be claimed by the garbage collector.
-        # Reading the display_text field here will return the C address of the
-        # allocated string. Use pyds.get_string() to get the string content.
-        py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
+        # display_meta=pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        # display_meta.num_labels = 1
+        # py_nvosd_text_params = display_meta.text_params[0]
+        # # Setting display text to be shown on screen
+        # # Note that the pyds module allocates a buffer for the string, and the
+        # # memory will not be claimed by the garbage collector.
+        # # Reading the display_text field here will return the C address of the
+        # # allocated string. Use pyds.get_string() to get the string content.
+        # py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
 
-        # Now set the offsets where the string should appear
-        py_nvosd_text_params.x_offset = 10
-        py_nvosd_text_params.y_offset = 12
+        # # Now set the offsets where the string should appear
+        # py_nvosd_text_params.x_offset = 10
+        # py_nvosd_text_params.y_offset = 12
 
-        # Font , font-color and font-size
-        py_nvosd_text_params.font_params.font_name = "Serif"
-        py_nvosd_text_params.font_params.font_size = 10
-        # set(red, green, blue, alpha); set to White
-        py_nvosd_text_params.font_params.font_color.set(1.0, 1.0, 1.0, 1.0)
+        # # Font , font-color and font-size
+        # py_nvosd_text_params.font_params.font_name = "Serif"
+        # py_nvosd_text_params.font_params.font_size = 10
+        # # set(red, green, blue, alpha); set to White
+        # py_nvosd_text_params.font_params.font_color.set(1.0, 1.0, 1.0, 1.0)
 
-        # Text background color
-        py_nvosd_text_params.set_bg_clr = 1
-        # set(red, green, blue, alpha); set to Black
-        py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
-        # Using pyds.get_string() to get display_text as string
-        print(pyds.get_string(py_nvosd_text_params.display_text))
-        pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        # # Text background color
+        # py_nvosd_text_params.set_bg_clr = 1
+        # # set(red, green, blue, alpha); set to Black
+        # py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
+        # # Using pyds.get_string() to get display_text as string
+        # print(pyds.get_string(py_nvosd_text_params.display_text))
+        # pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        time_run_so_far = 0
+        time_supposed = frame_number / int(config["maskcam"]["camera-framerate"]) 
+        if start_time is not None:
+            time_run_so_far = time.time() - start_time
+
+        text_to = "Time run: {} \nTime_processed: {} \nFrame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(time_run_so_far, time_supposed, frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
+        if not frame_number % FRAMES_LOG_INTERVAL:
+            print(text_to)
         try:
             l_frame=l_frame.next
         except StopIteration:
             break
-			
+    if start_time is None:
+        start_time = time.time()
     return Gst.PadProbeReturn.OK
 
 def cb_newpad(decodebin, decoder_src_pad, data):
@@ -753,7 +764,7 @@ def main(
     pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
     #pgie.set_property("config-file-path", CONFIG_FILE)
     pgie.set_property('config-file-path', "dstest1_pgie_config.txt")
-    pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
+    #pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
     convert_pre_osd = make_elm_or_print_err(

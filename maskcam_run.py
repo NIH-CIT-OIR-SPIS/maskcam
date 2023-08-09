@@ -22,9 +22,9 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
-from maskcam.comother import (
-    TEST_T
-)
+# from maskcam.process_setter import (
+#     TEST_T
+# )
 import os
 import sys
 import json
