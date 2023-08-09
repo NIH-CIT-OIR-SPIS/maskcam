@@ -76,9 +76,9 @@ streaming-start-default=1
 streaming-port=8554
 streaming-path=/maskcam
 streaming-clock-rate=90000
-# Supported: MP4, H264, H265
+# Supported: MP4, H264, H265, X264
 # Recommended H264 for stability on video save
-codec=H264
+codec=X264
 
 # Sequentially saving videos
 fileserver-enabled=1
@@ -92,7 +92,7 @@ fileserver-hdd-dir=/tmp/saved_videos
 
 # IP or domain address that this device will show in info messages (logs and web frontend, for streaming and file downloading)
 # Recommended: use env variable MASKCAM_DEVICE_ADDRESS to set this
-device-address=0
+device-address=192.168.1.101
 
 [property]
 interval=0
