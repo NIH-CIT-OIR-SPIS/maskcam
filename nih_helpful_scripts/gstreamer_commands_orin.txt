@@ -18,22 +18,7 @@ gst-launch-1.0 -v udpsrc port=$PORTNUM ! "application/x-rtp, media=(string)video
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-## not working
-# Send
-gst-launch-1.0 nvarguscamerasrc ! 'video/x-raw(memory:NVMM),width=1920, height=1080, framerate=60/1, format=NV12' ! nvvidconv ! x264enc bitrate=16000000 speed-preset=superfast ! rtph264pay ! queue ! udpsink port=5000 host=127.0.0.1
-
-
-# Display And Record
-gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" ! rtph264depay ! h264parse ! tee name=t t. ! queue ! mp4mux ! filesink location=xyz.mp4 -e t. ! queue leaky=1 ! decodebin ! videoconvert ! autovideosink sync=false
+# Display on Jetson Orin
+```
+gst-launch-1.0 nvarguscamerasrc sensor-id=0 ! "video/x-raw(memory:NVMM),width=1280,height=720,framerate=60/1,format=NV12" ! nvvidconv ! queue ! xvimagesink
+```
