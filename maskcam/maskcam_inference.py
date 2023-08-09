@@ -847,6 +847,7 @@ def main(
 
     # Comma separated list of clients, don't add spaces :S
     client_list = [f"127.0.0.1:{udp_port}" for udp_port in udp_ports]
+    print("client list: {}".format(client_list))
     multiudpsink.set_property("clients", ",".join(client_list))
 
     multiudpsink.set_property("async", False)

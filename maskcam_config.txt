@@ -49,8 +49,8 @@ default-input=argus://0
 
 # Output/streaming video resolution. 1024x576 keeps 4k aspect ratio of 1.777
 # Noah: Will need to be able to change these settings from MTQTT client 
-output-video-width=1920
-output-video-height=1080
+output-video-width=1024
+output-video-height=576
 
 # Run utils/gst_capabilities.sh and find video/x-raw entries
 camera-framerate=30
@@ -62,7 +62,7 @@ camera-flip-method=0
 # to avoid delaying the pipeline. This will override the fixed `interval` parameter below
 # E.g: if framerate=30 and max-fps=14,
 #      -> will set interval=2 so that inference runs only 1/3 of incoming frames
-inference-interval-auto=0
+inference-interval-auto=1
 # Set this value to the actual FPS bottleneck of the model. Only used if inference-interval-auto.
 # e.g: run the model on a video file (instead of live camera source) to determine model's FPS on your device
 inference-max-fps=14
@@ -81,7 +81,7 @@ streaming-clock-rate=90000
 codec=X264
 
 # Sequentially saving videos
-fileserver-enabled=1
+fileserver-enabled=0
 fileserver-port=8080
 fileserver-video-period=30
 fileserver-video-duration=35
