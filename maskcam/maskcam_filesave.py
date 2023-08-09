@@ -32,7 +32,7 @@ import time
 import signal
 import platform
 import threading
-import multiprocessing as mp
+from .common import multiproc as mp
 from datetime import datetime
 
 gi.require_version("Gst", "1.0")

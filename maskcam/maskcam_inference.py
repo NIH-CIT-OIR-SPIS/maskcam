@@ -26,13 +26,16 @@ import os
 import gi
 import pyds # Noah: pyds are where many of the nvidia specific gstreamer elements and plugins are located (i.e. DeepStream software)
 import sys
-import ipdb
+try:
+    import ipdb
+except ImportError:
+    pass
 import time
 import signal
 import platform
 import threading
 import numpy as np
-import multiprocessing as mp
+from .common import multiproc as mp
 from rich.console import Console
 from datetime import datetime, timezone
 
@@ -41,7 +44,7 @@ gi.require_version("Gst", "1.0")
 gi.require_version("GstRtspServer", "1.0")
 from gi.repository import GLib, Gst, GstRtspServer
 
-from norfair.tracker import Tracker, Detection
+#from norfair.tracker import Tracker, Detection
 
 from .config import config, print_config_overrides
 from .prints import print_inference as print
@@ -71,126 +74,126 @@ console = Console()
 e_interrupt = None
 
 
-class FaceMaskProcessor:
-    """
-    Noah:
-    Their own custom model processor for taking in the second part of the model pipeline (i.e. the output of the first YOLO model).
-    Once a person is detected this class will track them (using the norfair tracker) and then determine if they are wearing a mask or not.
+# class FaceMaskProcessor:
+#     """
+#     Noah:
+#     Their own custom model processor for taking in the second part of the model pipeline (i.e. the output of the first YOLO model).
+#     Once a person is detected this class will track them (using the norfair tracker) and then determine if they are wearing a mask or not.
     
-    """
-    def __init__(
-        self, th_detection=0, th_vote=0, min_face_size=0, tracker_period=1, disable_tracker=False
-    ):
-        self.people_votes = {}
-        self.current_people = set()
-        self.th_detection = th_detection
-        self.th_vote = th_vote
-        self.tracker_period = tracker_period
-        self.min_face_size = min_face_size
-        self.disable_detection_validation = False
-        self.min_votes = 5
-        self.max_votes = 50
-        self.color_mask = (0.0, 1.0, 0.0)  # green
-        self.color_no_mask = (1.0, 0.0, 0.0)  # red
-        self.color_unknown = (1.0, 1.0, 0.0)  # yellow
-        self.draw_raw_detections = disable_tracker
-        self.draw_tracked_people = not disable_tracker
-        self.stats_lock = threading.Lock()
+#     """
+#     def __init__(
+#         self, th_detection=0, th_vote=0, min_face_size=0, tracker_period=1, disable_tracker=False
+#     ):
+#         self.people_votes = {}
+#         self.current_people = set()
+#         self.th_detection = th_detection
+#         self.th_vote = th_vote
+#         self.tracker_period = tracker_period
+#         self.min_face_size = min_face_size
+#         self.disable_detection_validation = False
+#         self.min_votes = 5
+#         self.max_votes = 50
+#         self.color_mask = (0.0, 1.0, 0.0)  # green
+#         self.color_no_mask = (1.0, 0.0, 0.0)  # red
+#         self.color_unknown = (1.0, 1.0, 0.0)  # yellow
+#         self.draw_raw_detections = disable_tracker
+#         self.draw_tracked_people = not disable_tracker
+#         self.stats_lock = threading.Lock()
 
-        # Norfair Tracker
-        if disable_tracker:
-            self.tracker = None
-        else:
-            self.tracker = Tracker(
-                distance_function=self.keypoints_distance,
-                detection_threshold=self.th_detection,
-                distance_threshold=1,
-                point_transience=8,
-                hit_inertia_min=15,
-                hit_inertia_max=45,
-            )
+#         # Norfair Tracker
+#         if disable_tracker:
+#             self.tracker = None
+#         else:
+#             self.tracker = Tracker(
+#                 distance_function=self.keypoints_distance,
+#                 detection_threshold=self.th_detection,
+#                 distance_threshold=1,
+#                 point_transience=8,
+#                 hit_inertia_min=15,
+#                 hit_inertia_max=45,
+#             )
 
-    def keypoints_distance(self, detected_pose, tracked_pose):
-        detected_points = detected_pose.points
-        estimated_pose = tracked_pose.estimate
-        min_box_size = min(
-            max(
-                detected_points[1][0] - detected_points[0][0],  # x2 - x1
-                detected_points[1][1] - detected_points[0][1],  # y2 - y1
-                1,
-            ),
-            max(
-                estimated_pose[1][0] - estimated_pose[0][0],  # x2 - x1
-                estimated_pose[1][1] - estimated_pose[0][1],  # y2 - y1
-                1,
-            ),
-        )
-        mean_distance_normalized = (
-            np.mean(np.linalg.norm(detected_points - estimated_pose, axis=1)) / min_box_size
-        )
-        return mean_distance_normalized
+#     def keypoints_distance(self, detected_pose, tracked_pose):
+#         detected_points = detected_pose.points
+#         estimated_pose = tracked_pose.estimate
+#         min_box_size = min(
+#             max(
+#                 detected_points[1][0] - detected_points[0][0],  # x2 - x1
+#                 detected_points[1][1] - detected_points[0][1],  # y2 - y1
+#                 1,
+#             ),
+#             max(
+#                 estimated_pose[1][0] - estimated_pose[0][0],  # x2 - x1
+#                 estimated_pose[1][1] - estimated_pose[0][1],  # y2 - y1
+#                 1,
+#             ),
+#         )
+#         mean_distance_normalized = (
+#             np.mean(np.linalg.norm(detected_points - estimated_pose, axis=1)) / min_box_size
+#         )
+#         return mean_distance_normalized
 
-    def validate_detection(self, box_points, score, label):
-        if self.disable_detection_validation:
-            return True
-        box_width = box_points[1][0] - box_points[0][0]
-        box_height = box_points[1][1] - box_points[0][1]
-        return min(box_width, box_height) >= self.min_face_size and score >= self.th_detection
+#     def validate_detection(self, box_points, score, label):
+#         if self.disable_detection_validation:
+#             return True
+#         box_width = box_points[1][0] - box_points[0][0]
+#         box_height = box_points[1][1] - box_points[0][1]
+#         return min(box_width, box_height) >= self.min_face_size and score >= self.th_detection
 
-    def add_detection(self, person_id, label, score):
-        # This function is called from streaming thread
-        with self.stats_lock:
-            self.current_people.add(person_id)
-            if person_id not in self.people_votes:
-                self.people_votes[person_id] = 0
-            if score > self.th_vote:
-                if label == LABEL_MASK:
-                    self.people_votes[person_id] += 1
-                elif label == LABEL_NO_MASK or LABEL_MISPLACED:
-                    self.people_votes[person_id] -= 1
-                # max_votes limit
-                self.people_votes[person_id] = np.clip(
-                    self.people_votes[person_id], -self.max_votes, self.max_votes
-                )
+#     def add_detection(self, person_id, label, score):
+#         # This function is called from streaming thread
+#         with self.stats_lock:
+#             self.current_people.add(person_id)
+#             if person_id not in self.people_votes:
+#                 self.people_votes[person_id] = 0
+#             if score > self.th_vote:
+#                 if label == LABEL_MASK:
+#                     self.people_votes[person_id] += 1
+#                 elif label == LABEL_NO_MASK or LABEL_MISPLACED:
+#                     self.people_votes[person_id] -= 1
+#                 # max_votes limit
+#                 self.people_votes[person_id] = np.clip(
+#                     self.people_votes[person_id], -self.max_votes, self.max_votes
+#                 )
 
-    def get_person_label(self, person_id):
-        person_votes = self.people_votes[person_id]
-        if abs(person_votes) >= self.min_votes:
-            color = self.color_mask if person_votes > 0 else self.color_no_mask
-            label = "mask" if person_votes > 0 else "no mask"
-        else:
-            color = self.color_unknown
-            label = "not visible"
-        return f"{person_id}|{label}({abs(person_votes)})", color
+#     def get_person_label(self, person_id):
+#         person_votes = self.people_votes[person_id]
+#         if abs(person_votes) >= self.min_votes:
+#             color = self.color_mask if person_votes > 0 else self.color_no_mask
+#             label = "mask" if person_votes > 0 else "no mask"
+#         else:
+#             color = self.color_unknown
+#             label = "not visible"
+#         return f"{person_id}|{label}({abs(person_votes)})", color
 
-    def get_instant_statistics(self, refresh=True):
-        """
-        Get statistics only including people that appeared on camera since last refresh
-        """
-        instant_stats = self.get_statistics(filter_ids=self.current_people)
-        if refresh:
-            with self.stats_lock:
-                self.current_people = set()
-        return instant_stats
+#     def get_instant_statistics(self, refresh=True):
+#         """
+#         Get statistics only including people that appeared on camera since last refresh
+#         """
+#         instant_stats = self.get_statistics(filter_ids=self.current_people)
+#         if refresh:
+#             with self.stats_lock:
+#                 self.current_people = set()
+#         return instant_stats
 
-    def get_statistics(self, filter_ids=None):
-        with self.stats_lock:
-            if filter_ids is not None:
-                filtered_people = {
-                    id: votes for id, votes in self.people_votes.items() if id in filter_ids
-                }
-            else:
-                filtered_people = self.people_votes
-            total_people = len(filtered_people)
-            total_classified = 0
-            total_mask = 0
-            for person_id in filtered_people:
-                person_votes = filtered_people[person_id]
-                if abs(person_votes) >= self.min_votes:
-                    total_classified += 1
-                    if person_votes > 0:
-                        total_mask += 1
-        return total_people, total_classified, total_mask
+#     def get_statistics(self, filter_ids=None):
+#         with self.stats_lock:
+#             if filter_ids is not None:
+#                 filtered_people = {
+#                     id: votes for id, votes in self.people_votes.items() if id in filter_ids
+#                 }
+#             else:
+#                 filtered_people = self.people_votes
+#             total_people = len(filtered_people)
+#             total_classified = 0
+#             total_mask = 0
+#             for person_id in filtered_people:
+#                 person_votes = filtered_people[person_id]
+#                 if abs(person_votes) >= self.min_votes:
+#                     total_classified += 1
+#                     if person_votes > 0:
+#                         total_mask += 1
+#         return total_people, total_classified, total_mask
 
 
 def cb_add_statistics(cb_args):
@@ -256,159 +259,159 @@ def draw_detection(display_meta, n_draw, box_points, detection_label, color):
     display_meta.num_labels = n_draw + 1
 
 
-def cb_buffer_probe(pad, info, cb_args):
-    global frame_number
-    global start_time
+# def cb_buffer_probe(pad, info, cb_args):
+#     global frame_number
+#     global start_time
 
-    face_processor, e_ready = cb_args
-    gst_buffer = info.get_buffer()
-    if not gst_buffer:
-        print("Unable to get GstBuffer", error=True)
-        return
+#     face_processor, e_ready = cb_args
+#     gst_buffer = info.get_buffer()
+#     if not gst_buffer:
+#         print("Unable to get GstBuffer", error=True)
+#         return
 
-    # Set e_ready event to notify the pipeline is working (e.g: for orchestrator)
-    if e_ready is not None and not e_ready.is_set():
-        print("Inference pipeline setting [green]e_ready[/green]")
-        e_ready.set()
+#     # Set e_ready event to notify the pipeline is working (e.g: for orchestrator)
+#     if e_ready is not None and not e_ready.is_set():
+#         print("Inference pipeline setting [green]e_ready[/green]")
+#         e_ready.set()
 
-    # Retrieve batch metadata from the gst_buffer
-    # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
-    # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
-    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
+#     # Retrieve batch metadata from the gst_buffer
+#     # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
+#     # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
+#     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
 
-    l_frame = batch_meta.frame_meta_list
-    while l_frame is not None:
-        try:
-            # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
-            # The casting is done by pyds.glist_get_nvds_frame_meta()
-            # The casting also keeps ownership of the underlying memory
-            # in the C code, so the Python garbage collector will leave
-            # it alone.
-            # frame_meta = pyds.glist_get_nvds_frame_meta(l_frame.data)
-            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-        except StopIteration:
-            break
+#     l_frame = batch_meta.frame_meta_list
+#     while l_frame is not None:
+#         try:
+#             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
+#             # The casting is done by pyds.glist_get_nvds_frame_meta()
+#             # The casting also keeps ownership of the underlying memory
+#             # in the C code, so the Python garbage collector will leave
+#             # it alone.
+#             # frame_meta = pyds.glist_get_nvds_frame_meta(l_frame.data)
+#             frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+#         except StopIteration:
+#             break
 
-        frame_number = frame_meta.frame_num
-        # num_detections = frame_meta.num_obj_meta
-        l_obj = frame_meta.obj_meta_list
-        detections = []
-        obj_meta_list = []
-        while l_obj is not None:
-            try:
-                # Casting l_obj.data to pyds.NvDsObjectMeta
-                # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
-                obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-            except StopIteration:
-                break
-            obj_meta_list.append(obj_meta)
-            obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
-            box = obj_meta.rect_params
-            # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
+#         frame_number = frame_meta.frame_num
+#         # num_detections = frame_meta.num_obj_meta
+#         l_obj = frame_meta.obj_meta_list
+#         detections = []
+#         obj_meta_list = []
+#         while l_obj is not None:
+#             try:
+#                 # Casting l_obj.data to pyds.NvDsObjectMeta
+#                 # obj_meta=pyds.glist_get_nvds_object_meta(l_obj.data)
+#                 obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
+#             except StopIteration:
+#                 break
+#             obj_meta_list.append(obj_meta)
+#             obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
+#             box = obj_meta.rect_params
+#             # print(f"{obj_meta.obj_label} | {obj_meta.confidence}")
 
-            box_points = (
-                (box.left, box.top),
-                (box.left + box.width, box.top + box.height),
-            )
-            box_p = obj_meta.confidence
-            box_label = obj_meta.obj_label
-            if face_processor.validate_detection(box_points, box_p, box_label):
-                det_data = {"label": box_label, "p": box_p}
-                detections.append(
-                    # Noah: Will need to replace eventually
-                    Detection(
-                        np.array(box_points),
-                        data=det_data,
-                    )
-                )
-                # print(f"Added detection: {det_data}")
-            try:
-                l_obj = l_obj.next
-            except StopIteration:
-                break
+#             box_points = (
+#                 (box.left, box.top),
+#                 (box.left + box.width, box.top + box.height),
+#             )
+#             box_p = obj_meta.confidence
+#             box_label = obj_meta.obj_label
+#             if face_processor.validate_detection(box_points, box_p, box_label):
+#                 det_data = {"label": box_label, "p": box_p}
+#                 detections.append(
+#                     # Noah: Will need to replace eventually
+#                     Detection(
+#                         np.array(box_points),
+#                         data=det_data,
+#                     )
+#                 )
+#                 # print(f"Added detection: {det_data}")
+#             try:
+#                 l_obj = l_obj.next
+#             except StopIteration:
+#                 break
 
-        # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
-        for obj_meta in obj_meta_list:
-            # Remove this to avoid drawing label texts
-            pyds.nvds_remove_obj_meta_from_frame(frame_meta, obj_meta)
-        obj_meta_list = None
+#         # Remove all object meta to avoid drawing. Do this outside while since we're modifying list
+#         for obj_meta in obj_meta_list:
+#             # Remove this to avoid drawing label texts
+#             pyds.nvds_remove_obj_meta_from_frame(frame_meta, obj_meta)
+#         obj_meta_list = None
 
-        # Each meta object carries max 16 rects/labels/etc.
-        max_drawings_per_meta = 16  # This is hardcoded, not documented
+#         # Each meta object carries max 16 rects/labels/etc.
+#         max_drawings_per_meta = 16  # This is hardcoded, not documented
 
-        if face_processor.tracker is not None:
-            # Track, count and draw tracked people
-            tracked_people = face_processor.tracker.update(
-                detections, period=face_processor.tracker_period
-            )
-            # Filter out people with no live points (don't draw)
-            drawn_people = [person for person in tracked_people if person.live_points.any()]
+#         if face_processor.tracker is not None:
+#             # Track, count and draw tracked people
+#             tracked_people = face_processor.tracker.update(
+#                 detections, period=face_processor.tracker_period
+#             )
+#             # Filter out people with no live points (don't draw)
+#             drawn_people = [person for person in tracked_people if person.live_points.any()]
 
-            # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
-            if face_processor.draw_tracked_people:
-                for n_person, person in enumerate(drawn_people):
-                    points = person.estimate
-                    box_points = points.clip(0).astype(int)
+#             # Noah: Might not want to draw anything on raw frames just output JSON. Still need to update mask votes and do the rest of the inside of the if block.
+#             if face_processor.draw_tracked_people:
+#                 for n_person, person in enumerate(drawn_people):
+#                     points = person.estimate
+#                     box_points = points.clip(0).astype(int)
 
-                    # Update mask votes
-                    face_processor.add_detection(
-                        person.id,
-                        person.last_detection.data["label"],
-                        person.last_detection.data["p"],
-                    )
-                    label, color = face_processor.get_person_label(person.id)
+#                     # Update mask votes
+#                     face_processor.add_detection(
+#                         person.id,
+#                         person.last_detection.data["label"],
+#                         person.last_detection.data["p"],
+#                     )
+#                     label, color = face_processor.get_person_label(person.id)
 
-                    # Index of this person's drawing in the current meta
-                    n_draw = n_person % max_drawings_per_meta
+#                     # Index of this person's drawing in the current meta
+#                     n_draw = n_person % max_drawings_per_meta
 
-                    if n_draw == 0:  # Initialize meta
-                        # Acquiring a display meta object. The memory ownership remains in
-                        # the C code so downstream plugins can still access it. Otherwise
-                        # the garbage collector will claim it when this probe function exits.
-                        display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-                        pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+#                     if n_draw == 0:  # Initialize meta
+#                         # Acquiring a display meta object. The memory ownership remains in
+#                         # the C code so downstream plugins can still access it. Otherwise
+#                         # the garbage collector will claim it when this probe function exits.
+#                         display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+#                         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
 
-                    draw_detection(display_meta, n_draw, box_points, label, color)
+#                     draw_detection(display_meta, n_draw, box_points, label, color)
 
-        # Raw detections
-        # Noah: Might not want to draw anything on raw frames just output JSON.
-        if face_processor.draw_raw_detections:
-            for n_detection, detection in enumerate(detections):
-                points = detection.points
-                box_points = points.clip(0).astype(int)
-                label = detection.data["label"]
-                if label == LABEL_MASK:
-                    color = face_processor.color_mask
-                elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
-                    color = face_processor.color_no_mask
-                else:
-                    color = face_processor.color_unknown
-                label = f"{label} | {detection.data['p']:.2f}"
-                n_draw = n_detection % max_drawings_per_meta
+#         # Raw detections
+#         # Noah: Might not want to draw anything on raw frames just output JSON.
+#         if face_processor.draw_raw_detections:
+#             for n_detection, detection in enumerate(detections):
+#                 points = detection.points
+#                 box_points = points.clip(0).astype(int)
+#                 label = detection.data["label"]
+#                 if label == LABEL_MASK:
+#                     color = face_processor.color_mask
+#                 elif label == LABEL_NO_MASK or label == LABEL_MISPLACED:
+#                     color = face_processor.color_no_mask
+#                 else:
+#                     color = face_processor.color_unknown
+#                 label = f"{label} | {detection.data['p']:.2f}"
+#                 n_draw = n_detection % max_drawings_per_meta
 
-                if n_draw == 0:  # Initialize meta
-                    # Acquiring a display meta object. The memory ownership remains in
-                    # the C code so downstream plugins can still access it. Otherwise
-                    # the garbage collector will claim it when this probe function exits.
-                    display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
-                    pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
-                draw_detection(display_meta, n_draw, box_points, label, color)
+#                 if n_draw == 0:  # Initialize meta
+#                     # Acquiring a display meta object. The memory ownership remains in
+#                     # the C code so downstream plugins can still access it. Otherwise
+#                     # the garbage collector will claim it when this probe function exits.
+#                     display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+#                     pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+#                 draw_detection(display_meta, n_draw, box_points, label, color)
 
-            # Using pyds.get_string() to get display_text as string
-            # print(pyds.get_string(py_nvosd_text_params.display_text))
-            # print(".", end="", flush=True)
-        # print("")
-        if not frame_number % FRAMES_LOG_INTERVAL:
-            print(f"Processed {frame_number} frames...")
+#             # Using pyds.get_string() to get display_text as string
+#             # print(pyds.get_string(py_nvosd_text_params.display_text))
+#             # print(".", end="", flush=True)
+#         # print("")
+#         if not frame_number % FRAMES_LOG_INTERVAL:
+#             print(f"Processed {frame_number} frames...")
 
-        try:
-            l_frame = l_frame.next
-        except StopIteration:
-            break
-    # Start timer at the end of first frame processing
-    if start_time is None:
-        start_time = time.time()
-    return Gst.PadProbeReturn.OK
+#         try:
+#             l_frame = l_frame.next
+#         except StopIteration:
+#             break
+#     # Start timer at the end of first frame processing
+#     if start_time is None:
+#         start_time = time.time()
+#     return Gst.PadProbeReturn.OK
 
 
 def cb_newpad(decodebin, decoder_src_pad, data):

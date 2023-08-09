@@ -22,7 +22,7 @@
 
 import os
 import json
-from multiprocessing import Queue
+from .common import multiproc as mp
 from typing import Callable, List
 from paho.mqtt import client as paho_mqtt_client
 
@@ -52,7 +52,7 @@ if config_device_name and config_device_name != "0":
 MQTT_BROKER_PORT = int(config["mqtt"]["mqtt-broker-port"])
 MQTT_DEVICE_DESCRIPTION = config["mqtt"]["mqtt-device-description"]
 
-mqtt_msg_queue = Queue(maxsize=100)  # 100 mqtt messages stored max
+mqtt_msg_queue = mp.Queue(maxsize=100)  # 100 mqtt messages stored max
 
 
 def mqtt_send_queue(mqtt_client):
