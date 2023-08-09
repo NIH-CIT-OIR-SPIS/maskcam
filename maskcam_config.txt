@@ -74,7 +74,7 @@ udp-ports-filesave=5401,5402
 streaming-start-default=1
 # Noah: Might need to update streaming-port as there will be multiple Jetson's trying to connect to one port if this is left as is (I think)
 streaming-port=8554
-streaming-path=/maskcam
+streaming-path=/maskcamuy
 streaming-clock-rate=90000
 # Supported: MP4, H264, H265, X264
 # Recommended H264 for stability on video save
