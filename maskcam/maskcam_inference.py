@@ -764,7 +764,7 @@ def main(
     pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
     #pgie.set_property("config-file-path", CONFIG_FILE)
     pgie.set_property('config-file-path', "dstest1_pgie_config.txt")
-    #pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
+    pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
     convert_pre_osd = make_elm_or_print_err(
