@@ -18,9 +18,10 @@ gst-launch-1.0 -v udpsrc port=$PORTNUM ! "application/x-rtp, media=(string)video
 
 
 
-
-
-
+# Display on Jetson Orin
+```
+gst-launch-1.0 nvarguscamerasrc sensor-id=0 ! "video/x-raw(memory:NVMM),width=1280,height=720,framerate=60/1,format=NV12" ! nvvidconv ! queue ! xvimagesink
+```
 
 
 
