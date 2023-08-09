@@ -52,6 +52,7 @@ from .common import (
     CODEC_MP4,
     CODEC_H264,
     CODEC_H265,
+    CODEC_X264,
     USBCAM_PROTOCOL,
     RASPICAM_PROTOCOL,
     CONFIG_FILE,
@@ -583,22 +584,22 @@ def main(
 
     # FaceMask initialization
     # Noah: Variables loaded from config file (like a mini model params)
-    face_tracker_period = skip_inference + 1  # tracker_period=skipped + inference frame(1)
-    face_detection_threshold = float(config["face-processor"]["detection-threshold"])
-    face_voting_threshold = float(config["face-processor"]["voting-threshold"])
-    face_min_face_size = int(config["face-processor"]["min-face-size"])
-    face_disable_tracker = int(config["face-processor"]["disable-tracker"])
-    face_processor = FaceMaskProcessor(
-        th_detection=face_detection_threshold,
-        th_vote=face_voting_threshold,
-        min_face_size=face_min_face_size,
-        tracker_period=face_tracker_period,
-        disable_tracker=face_disable_tracker,
-    )
+    # face_tracker_period = skip_inference + 1  # tracker_period=skipped + inference frame(1)
+    # face_detection_threshold = float(config["face-processor"]["detection-threshold"])
+    # face_voting_threshold = float(config["face-processor"]["voting-threshold"])
+    # face_min_face_size = int(config["face-processor"]["min-face-size"])
+    # face_disable_tracker = int(config["face-processor"]["disable-tracker"])
+    # face_processor = FaceMaskProcessor(
+    #     th_detection=face_detection_threshold,
+    #     th_vote=face_voting_threshold,
+    #     min_face_size=face_min_face_size,
+    #     tracker_period=face_tracker_period,
+    #     disable_tracker=face_disable_tracker,
+    # )
 
     # Standard GStreamer initialization
     Gst.init(None)
-
+ #
     # Create gstreamer elements
     # Create Pipeline element that will form a connection of other elements
     print("Creating Pipeline \n ")
@@ -618,19 +619,20 @@ def main(
 
             # Input camera configuration
             # Use ./gst_capabilities.sh to get the list of available capabilities from /dev/video0
-            camera_capabilities = f"video/x-raw, framerate={camera_framerate}/1"
+            camera_capabilities = f"video/x-raw, width={output_width}, height={output_height}, framerate={camera_framerate}/1"
         elif raspicam_input:
             input_device = input_filename[len(RASPICAM_PROTOCOL) :]
             source = make_elm_or_print_err(
                 "nvarguscamerasrc", "nv-argus-camera-source", "RaspiCam input"
             )
             source.set_property("sensor-id", int(input_device))
-            source.set_property("bufapi-version", 1)
+            #source.set_property("bufapi-version", 1)
 
             # Special camera_capabilities for raspicam
-            camera_capabilities = f"video/x-raw(memory:NVMM),framerate={camera_framerate}/1"
+            
             nvvidconvsrc = make_elm_or_print_err("nvvidconv", "convertor_flip", "Convertor flip")
             nvvidconvsrc.set_property("flip-method", camera_flip_method)
+            camera_capabilities = f"video/x-raw(memory:NVMM), width={output_width}, height={output_height}, framerate={camera_framerate}/1"
 
         # Misterious converting sequence from deepstream_test_1_usb.py
         caps_camera = make_elm_or_print_err("capsfilter", "camera_src_caps", "Camera caps filter")
@@ -684,7 +686,7 @@ def main(
 
     # Video capabilities: check format and GPU/CPU location
     capsfilter = make_elm_or_print_err("capsfilter", "capsfilter", "capsfilter")
-    if codec == CODEC_MP4:  # Not hw accelerated
+    if codec == CODEC_MP4 or codec == CODEC_X264:  # Not hw accelerated
         caps = Gst.Caps.from_string("video/x-raw, format=I420")
     else:  # hw accelerated
         caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
