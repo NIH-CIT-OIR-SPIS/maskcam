@@ -73,7 +73,11 @@ start_time = None
 end_time = None
 console = Console()
 e_interrupt = None
-
+# Just for example
+PGIE_CLASS_ID_VEHICLE = 0
+PGIE_CLASS_ID_BICYCLE = 1
+PGIE_CLASS_ID_PERSON = 2
+PGIE_CLASS_ID_ROADSIGN = 3
 
 # class FaceMaskProcessor:
 #     """
@@ -197,26 +201,26 @@ e_interrupt = None
 #         return total_people, total_classified, total_mask
 
 
-def cb_add_statistics(cb_args):
-    stats_period, stats_queue, face_processor = cb_args
+# def cb_add_statistics(cb_args):
+#     stats_period, stats_queue, face_processor = cb_args
 
-    people_total, people_classified, people_mask = face_processor.get_instant_statistics(
-        refresh=True
-    )
-    people_no_mask = people_classified - people_mask
+#     people_total, people_classified, people_mask = face_processor.get_instant_statistics(
+#         refresh=True
+#     )
+#     people_no_mask = people_classified - people_mask
 
-    # stats_queue is an mp.Queue optionally provided externally (in main())
-    stats_queue.put_nowait(
-        {
-            "people_total": people_total,
-            "people_with_mask": people_mask,
-            "people_without_mask": people_no_mask,
-            "timestamp": datetime.timestamp(datetime.now(timezone.utc)),
-        }
-    )
+#     # stats_queue is an mp.Queue optionally provided externally (in main())
+#     stats_queue.put_nowait(
+#         {
+#             "people_total": people_total,
+#             "people_with_mask": people_mask,
+#             "people_without_mask": people_no_mask,
+#             "timestamp": datetime.timestamp(datetime.now(timezone.utc)),
+#         }
+#     )
 
-    # Next report timeout
-    GLib.timeout_add_seconds(stats_period, cb_add_statistics, cb_args)
+#     # Next report timeout
+#     GLib.timeout_add_seconds(stats_period, cb_add_statistics, cb_args)
 
 
 def sigint_handler(sig, frame):
@@ -414,6 +418,90 @@ def draw_detection(display_meta, n_draw, box_points, detection_label, color):
 #         start_time = time.time()
 #     return Gst.PadProbeReturn.OK
 
+
+def osd_sink_pad_buffer_probe(pad,info,u_data):
+    frame_number=0
+    #Intiallizing object counter with 0.
+    obj_counter = {
+        PGIE_CLASS_ID_VEHICLE:0,
+        PGIE_CLASS_ID_PERSON:0,
+        PGIE_CLASS_ID_BICYCLE:0,
+        PGIE_CLASS_ID_ROADSIGN:0
+    }
+    num_rects=0
+
+    gst_buffer = info.get_buffer()
+    if not gst_buffer:
+        print("Unable to get GstBuffer ")
+        return
+
+    # Retrieve batch metadata from the gst_buffer
+    # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
+    # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
+    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
+    l_frame = batch_meta.frame_meta_list
+    while l_frame is not None:
+        try:
+            # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
+            # The casting is done by pyds.NvDsFrameMeta.cast()
+            # The casting also keeps ownership of the underlying memory
+            # in the C code, so the Python garbage collector will leave
+            # it alone.
+            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+        except StopIteration:
+            break
+
+        frame_number=frame_meta.frame_num
+        num_rects = frame_meta.num_obj_meta
+        l_obj=frame_meta.obj_meta_list
+        while l_obj is not None:
+            try:
+                # Casting l_obj.data to pyds.NvDsObjectMeta
+                obj_meta=pyds.NvDsObjectMeta.cast(l_obj.data)
+            except StopIteration:
+                break
+            obj_counter[obj_meta.class_id] += 1
+            try: 
+                l_obj=l_obj.next
+            except StopIteration:
+                break
+
+        # Acquiring a display meta object. The memory ownership remains in
+        # the C code so downstream plugins can still access it. Otherwise
+        # the garbage collector will claim it when this probe function exits.
+        display_meta=pyds.nvds_acquire_display_meta_from_pool(batch_meta)
+        display_meta.num_labels = 1
+        py_nvosd_text_params = display_meta.text_params[0]
+        # Setting display text to be shown on screen
+        # Note that the pyds module allocates a buffer for the string, and the
+        # memory will not be claimed by the garbage collector.
+        # Reading the display_text field here will return the C address of the
+        # allocated string. Use pyds.get_string() to get the string content.
+        py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
+
+        # Now set the offsets where the string should appear
+        py_nvosd_text_params.x_offset = 10
+        py_nvosd_text_params.y_offset = 12
+
+        # Font , font-color and font-size
+        py_nvosd_text_params.font_params.font_name = "Serif"
+        py_nvosd_text_params.font_params.font_size = 10
+        # set(red, green, blue, alpha); set to White
+        py_nvosd_text_params.font_params.font_color.set(1.0, 1.0, 1.0, 1.0)
+
+        # Text background color
+        py_nvosd_text_params.set_bg_clr = 1
+        # set(red, green, blue, alpha); set to Black
+        py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
+        # Using pyds.get_string() to get display_text as string
+        print(pyds.get_string(py_nvosd_text_params.display_text))
+        pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
+        try:
+            l_frame=l_frame.next
+        except StopIteration:
+            break
+			
+    return Gst.PadProbeReturn.OK
 
 def cb_newpad(decodebin, decoder_src_pad, data):
     print("In cb_newpad\n")
@@ -662,7 +750,8 @@ def main(
     # Inference element: object detection using TRT engine
     # Noah: This is building the Gstreamer element that is used during inferencing of network.
     pgie = make_elm_or_print_err("nvinfer", "primary-inference", "pgie")
-    pgie.set_property("config-file-path", CONFIG_FILE)
+    #pgie.set_property("config-file-path", CONFIG_FILE)
+    pgie.set_property('config-file-path', "dstest1_pgie_config.txt")
     pgie.set_property("interval", skip_inference) # Set nvinfer.interval (number of frames to skip inference and use tracker instead)
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
@@ -699,6 +788,8 @@ def main(
         encoder = make_elm_or_print_err("avenc_mpeg4", "encoder", "Encoder")
         codeparser = make_elm_or_print_err("mpeg4videoparse", "mpeg4-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtpmp4vpay", "rtppay", "RTP MPEG-44 Payload")
+        encoder.set_property("insert-sps-pps", 1)
+        encoder.set_property("bitrate", output_bitrate)
     elif codec == CODEC_H264:
         print("Creating H264 stream")
         encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
@@ -706,17 +797,31 @@ def main(
         encoder.set_property("bufapi-version", 1)
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
-    else:  # Default: H265 (recommended)
+        encoder.set_property("insert-sps-pps", 1)
+        encoder.set_property("bitrate", output_bitrate)
+    elif codec == CODEC_X264:
+        print("Creating X264 stream")
+        encoder = make_elm_or_print_err("x264enc", "encoder", "Encoder")
+        encoder.set_property("tune", 4)  # 4: zerolatency
+        encoder.set_property("speed-preset", 3)  # 3: veryfast
+
+        # Possibly want maybe not
+        encoder.set_property("byte-stream", True)
+        codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
+        rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
+        encoder.set_property("bitrate", output_bitrate // 1000)  # kbps
+
+    elif codec == CODEC_H265:  # Default: H265
         print("Creating H265 stream")
         encoder = make_elm_or_print_err("nvv4l2h265enc", "encoder", "Encoder")
         encoder.set_property("preset-level", 1)
         encoder.set_property("bufapi-version", 1)
         codeparser = make_elm_or_print_err("h265parse", "h265-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph265pay", "rtppay", "RTP H265 Payload")
-
-    encoder.set_property("insert-sps-pps", 1)
-    encoder.set_property("bitrate", output_bitrate)
-
+        encoder.set_property("insert-sps-pps", 1)
+        encoder.set_property("bitrate", output_bitrate)
+    else:
+        raise ValueError("Unknown codec")
 
     # Splitting stream
     splitter_file_udp = make_elm_or_print_err("tee", "tee_file_udp", "Splitter file/UDP")
@@ -828,9 +933,10 @@ def main(
     osdsinkpad = nvosd.get_static_pad("sink")
     if not osdsinkpad:
         print("Unable to get sink pad of nvosd", error=True)
-
-    cb_args = (face_processor, e_ready)
-    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
+    
+    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
+    # cb_args = (face_processor, e_ready)
+    # osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, cb_buffer_probe, cb_args)
 
     # Noah: Starting main Gstreamer process
     # GLib loop required for RTSP server
@@ -861,9 +967,9 @@ def main(
         time_start_playing = time.time()
 
         # Timer to add statistics to queue
-        if stats_queue is not None:
-            cb_args = stats_period, stats_queue, face_processor
-            GLib.timeout_add_seconds(stats_period, cb_add_statistics, cb_args)
+        # if stats_queue is not None:
+        #     cb_args = stats_period, stats_queue, face_processor
+        #     GLib.timeout_add_seconds(stats_period, cb_add_statistics, cb_args)
 
         # Periodic gloop interrupt (see utils.glib_cb_restart)
         t_check = 100
