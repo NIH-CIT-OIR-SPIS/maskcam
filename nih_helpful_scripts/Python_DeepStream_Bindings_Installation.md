@@ -74,3 +74,10 @@ python3.8 -c "import pyds"
 
 Should see no output (which means there is no error importing the module)
 
+Then do
+
+```
+cd ~ && \
+cp -r /opt/nvidia/deepstream/deepstream/samples/ samples/
+```
+
