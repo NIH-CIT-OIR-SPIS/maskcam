@@ -81,3 +81,9 @@ cd ~ && \
 cp -r /opt/nvidia/deepstream/deepstream/samples/ samples/
 ```
 
+Then 
+```
+cd /opt/nvidia/deepstream/deepstream/samples && \
+sudo ./triton_backend_setup.sh
+```
+
