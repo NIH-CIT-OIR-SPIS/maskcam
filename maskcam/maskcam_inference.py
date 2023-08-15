@@ -545,7 +545,10 @@ def decodebin_child_added(child_proxy, Object, name, user_data):
     if name.find("decodebin") != -1:
         Object.connect("child-added", decodebin_child_added, user_data)
     if is_aarch64() and name.find("nvv4l2decoder") != -1:
-        Object.set_property("bufapi-version", True)
+        try:
+            Object.set_property("bufapi-version", True)
+        except:
+            pass
 
 
 def create_source_bin(index, uri):
@@ -806,7 +809,7 @@ def main(
         print("Creating H264 stream")
         encoder = make_elm_or_print_err("nvv4l2h264enc", "encoder", "Encoder")
         encoder.set_property("preset-level", 1)
-        encoder.set_property("bufapi-version", 1)
+        #encoder.set_property("bufapi-version", 1)
         codeparser = make_elm_or_print_err("h264parse", "h264-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph264pay", "rtppay", "RTP H264 Payload")
         encoder.set_property("insert-sps-pps", 1)
@@ -827,7 +830,7 @@ def main(
         print("Creating H265 stream")
         encoder = make_elm_or_print_err("nvv4l2h265enc", "encoder", "Encoder")
         encoder.set_property("preset-level", 1)
-        encoder.set_property("bufapi-version", 1)
+        #encoder.set_property("bufapi-version", 1)
         codeparser = make_elm_or_print_err("h265parse", "h265-parser", "Code Parser")
         rtppay = make_elm_or_print_err("rtph265pay", "rtppay", "RTP H265 Payload")
         encoder.set_property("insert-sps-pps", 1)
