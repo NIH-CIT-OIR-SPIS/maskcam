@@ -78,7 +78,7 @@ streaming-path=/maskcamuy
 streaming-clock-rate=90000
 # Supported: MP4, H264, H265, X264
 # Recommended H264 for stability on video save
-codec=X264
+codec=H264
 
 # Sequentially saving videos
 fileserver-enabled=0
