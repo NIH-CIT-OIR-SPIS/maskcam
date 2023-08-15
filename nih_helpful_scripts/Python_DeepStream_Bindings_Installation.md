@@ -13,7 +13,7 @@ sudo su
 ```
 Then 
 ```
-cd /opt/nvidia/deepstream/deepstream-6.2/sources/ && \
+cd /opt/nvidia/deepstream/deepstream/sources/ && \
 
 git clone https://github.com/NVIDIA-AI-IOT/deepstream_python_apps.git && \
 cd /opt/nvidia/deepstream/deepstream/sources/
@@ -62,7 +62,7 @@ exit
 ```
 ```
 cd /opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/bindings/build/ && \
-python3.8 -m pip install ./pyds-1.1.6-py3-none*.whl && \
+python3.8 -m pip install ./pyds*.whl && \
 sudo mv pyds.so pyds.egg-info ~/.local/lib/python3.8/site-packages/ && \
 cd
 ```
